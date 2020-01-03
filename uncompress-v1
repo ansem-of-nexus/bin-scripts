@@ -1,0 +1,65 @@
+#!/bin/bash
+echo "$1"
+#----------
+# tar balls
+#----------
+# .tar
+if [[ $1 == *\.tar ]]; then
+echo "tar ball found" && sleep 5s
+tar -xvf "$1"
+exit
+fi
+# .tar.bz2
+if [[ $1 == *\.tar\.bz2 ]]; then
+echo "tar ball compressed with bzip found" && sleep 5s
+tar -xvjf "$1"
+exit
+fi
+# .tar.gz
+if [[ $1 == *\.tar\.gz ]] || [[ $1 == *\.tgz ]]; then
+echo "tar ball compressed with gunzip found" && sleep 5s
+echo "tar.gz found"
+tar -xvzf "$1"
+exit
+fi
+# .tar.xz
+if [[ $1 == *\.tar\.xz ]]; then
+echo "tar ball compressed with xz found" && sleep 5s
+tar -xvJf "$1"
+exit
+fi
+#----------
+# single types
+#----------
+# .7z
+if [[ $1 == *\.7z ]]; then
+echo "7-Zip found" && sleep 5s
+7za x "$1"
+exit
+fi
+# .bz2
+if [[ $1 == *\.bz2 ]]; then
+echo "bzip found" && sleep 5s
+bzip2 -dk "$1"
+exit
+fi
+# .gz
+if [[ $1 == *\.gz ]]; then
+echo "gunzip found" && sleep 5s
+gzip -d "$1"
+exit
+fi
+# .rar
+if [[ $1 == *\.rar ]]; then
+echo "rar found" && sleep 5s
+unar "$1"
+exit
+fi
+# .zip
+if [[ $1 == *\.zip ]]; then
+echo "zip found" && sleep 5s
+unzip "$1"
+exit
+fi
+echo "No supported Archive found" && sleep 5s
+exit

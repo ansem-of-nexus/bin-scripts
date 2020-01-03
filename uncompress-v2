@@ -1,0 +1,64 @@
+#!/bin/bash
+function help_screen () {
+  echo "Usage: script [option]"
+  echo ""
+  echo "File types"
+  echo "  Tarballs"
+  echo "    *.tar"
+  echo "    *.tar.bz2"
+  echo "    *.tar.gz | *.tgz"
+  echo "    *.tar.xz"
+  echo "  Singles"
+  echo "    *.7z"
+  echo "    *.bz2"
+  echo "    *.gz"
+  echo "    *.rar"
+  echo "    *.zip"
+  exit 0 ;}
+echo "$1"
+case "$1" in
+#----------
+# tar balls
+#----------
+  *.tar)
+    echo "tar ball found"
+    tar -xvf "$1"
+    ;;
+  *.tar.bz2)
+    echo "tar ball compressed with bzip found"
+    tar -xvjf "$1"
+    ;;
+  *.tar.gz|*.tgz)
+    echo "tar ball compressed with gunzip found"
+    tar -xvzf "$1"
+    ;;
+  *.tar.xz)
+    echo "tar ball compressed with xz found"
+    tar -xvJf "$1"
+    ;;
+#----------
+# single types
+#----------
+  *.7z)
+    echo "7-Zip found"
+    7za x "$1"
+    ;;
+  *.bz2)
+    echo "bzip found"
+    bzip2 -dk "$1"
+    ;;
+  *.gz)
+    echo "gunzip found"
+    gzip -d "$1"
+    ;;
+  *.rar)
+    echo "rar found"
+    unar "$1"
+    ;;
+  *.zip)
+    echo "zip found"
+    unzip "$1"
+esac
+echo "finished"
+sleep 5s
+exit 0

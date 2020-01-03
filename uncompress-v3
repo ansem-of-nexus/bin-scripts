@@ -1,0 +1,105 @@
+#!/bin/bash
+function help_screen () {
+  echo "Usage: script [option]"
+  echo ""
+  echo "-d set directory of files"
+  echo ""
+  echo "File types"
+  echo "  Tarballs"
+  echo "    *.tar"
+  echo "    *.tar.bz2"
+  echo "    *.tar.gz | *.tgz"
+  echo "    *.tar.xz"
+  echo "  Singles"
+  echo "    *.7z"
+  echo "    *.bz2"
+  echo "    *.gz"
+  echo "    *.rar"
+  echo "    *.zip"
+  exit 0 ;}
+function file_logic () {
+  case "$1" in
+  #----------
+  # tar balls
+  #----------
+    *.tar)
+      echo "tar ball found"
+      tar -xvf "$1"
+      ;;
+    *.tar.bz2)
+      echo "tar ball compressed with bzip found"
+      tar -xvjf "$1"
+      ;;
+    *.tar.gz|*.tgz)
+      echo "tar ball compressed with gunzip found"
+      tar -xvzf "$1"
+      ;;
+    *.tar.xz)
+      echo "tar ball compressed with xz found"
+      tar -xvJf "$1"
+      ;;
+  #----------
+  # single types
+  #----------
+    *.7z)
+      echo "7-Zip found"
+      7za x "$1"
+      ;;
+    *.bz2)
+      echo "bzip found"
+      bzip2 -dk "$1"
+      ;;
+    *.gz)
+      echo "gunzip found"
+      gzip -d "$1"
+      ;;
+    *.rar)
+      echo "rar found"
+      unar "$1"
+      ;;
+    *.zip)
+      echo "zip found"
+      unzip "$1"
+  esac
+  echo "finished uncompressing $1"
+  } #fucntion file_logic ()
+function directory_logic () {
+  if [ ! -d $1 ]; then
+    echo "directory set is not a directory"
+    exit 1
+  fi #if [ ! -d $1 ]; then
+  while read l; do
+    if [ -d "$l" ]; then
+      echo "'$l' is a dirrectory"
+    else
+      echo "'$l' is a file"
+    fi #if [ -d $line ]; then
+  done <<< "$(ls -1 $1)" #while read line; in
+  } #function directory_logic ()
+while getopts ":hd:" opt; do
+  case $opt in
+    h)
+      help_screen
+      exit 0
+      ;;
+    d)
+      directory_logic "${OPTARG}"
+      exit 0
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      help_screen
+      exit 1
+      ;;
+    :)
+      echo "Option -$OPTARG requires an argument." >&2
+      help_screen
+      exit 1
+      ;;
+  esac #case $opt in
+done #while getopts ":h" opt; do
+file_logic "$1"
+#####
+# end of script
+#####
+exit 0
