@@ -1,0 +1,95 @@
+#!/bin/bash
+#
+# script to automate configuring a youtube-dl execution
+#
+# setting a default playlist to download
+main=""
+# when combinding quality type, what filetype do you want
+#    list of filetypes can be found in youtube-dl documentation
+file_type="mkv"
+# limits should be set in number and size sets (e.g. 1K, 1M, 1G)
+# rate limit for single download
+rlimit_single="1M"
+# rate limit for playlist download
+rlimit_list="512K"
+#
+# DO NOT EDIT pass this line unless you know what you are doing
+#
+function help_screen () {
+  echo "command [type] url [options]"
+  echo "    -h for this screen"
+  echo "types are:"
+  echo "    -l for list"
+  echo "    -s for single"
+  echo "options are:"
+  echo "    -m for music"
+  echo "    -q for high quality"
+  exit 0
+  }
+output="youtube-dl -i --abort-on-unavailable-fragment --mark-watched"
+quality=""
+if [ "$2" = "main" ]; then
+  url=$main
+else
+  url=$2
+fi #if [ "$2" = "main" ]; then
+while getopts ":hl:s:mq" opt; do
+  case $opt in
+    h)
+      help_screen
+      exit 0
+      ;;
+    l)
+      output+=" --yes-playlist -r $rlimit_list"
+      ;;
+    s)
+      output+=" --no-playlist -r $rlimit_single"
+      ;;
+    m)
+      if [ "$#" -gt 3 ]; then
+        if [ "$4" = "best" ]; then
+          quality=" -f 'bestaudio'"
+        else
+          quality=" -f $4"
+        fi #if [ "$4" = "best" ]; then
+      else
+        youtube-dl -F $2 | grep -F "audio only"
+        exit 0
+      fi #if [ "$#" -gt 3 ]; then
+      ;;
+    q)
+      if [ "$#" -gt 3 ]; then
+        if [ "$#" -gt 4 ]; then
+          quality="-f '$4+$5' --merge-output-format $file_type"
+        else
+          if [ "$4" = "best" ]; then
+            quality="-f 'bestvideo+bestaudio' --merge-output-format $file_type"
+          else
+            quality="-f $4"
+          fi #if [ "$4" = "best" ]; then
+        fi #if [ "$#" -gt 4 ]; then
+      else
+        youtube-dl -F $2
+        exit 0
+      fi #if [ "$#" -gt 3 ]; then
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      help_screen
+      exit 1
+      ;;
+    :)
+      echo "Option -$OPTARG requires an argument." >&2
+      help_screen
+      exit 1
+      ;;
+  esac
+done #while getopts ":hl:s:m:q:" opt; do
+if [ -z "$quality" ]; then quality="-f 'best[ext=mp4]'"; fi
+output+=" $quality -o \"./[%(upload_date)s] %(title)s [%(uploader)s].%(ext)s\" $url"
+echo $output
+eval $output
+echo ""
+echo "finished download"
+echo ""
+exit 0

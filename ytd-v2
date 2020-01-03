@@ -1,0 +1,131 @@
+#!/bin/bash
+#
+# script to automate configuring a youtube-dl execution
+#
+# setting a default playlist to download
+main="main-playlist"
+# when combinding quality type, what filetype do you want
+#    list of filetypes can be found in youtube-dl documentation
+file_type="mkv"
+# limits should be set in number and size sets (e.g. 1K, 1M, 1G)
+#
+# DO NOT EDIT pass this line unless you know what you are doing
+#
+function help_screen () {
+  echo "command [type] url [options]"
+  echo "    -h for this screen"
+  echo "types are:"
+  echo "    -s for single"
+  echo "    -l for list"
+  echo "options are:"
+  echo "    -p for path"
+  echo "    -q set video/audio resolution/quality"
+  echo "    -r limit download rate (e.g. 1K, 1M, 1G)"
+  exit 0
+  }
+function sanatize () {
+  o="$1"
+  special=$'`!#$^&*(){}|[]\\;\'",<>? '
+  for ((i=0; i < ${#special}; i++)); do
+    char="${special:i:1}"
+    o="${o//$char/\\$char}"
+  done
+  echo "$o"
+  }
+output="youtube-dl -i --abort-on-unavailable-fragment"
+type=""
+quality=""
+while getopts "hms:l:q:p:n:r:c:" opt; do
+  case $opt in
+    h)
+      help_screen
+      exit 0
+      ;;
+    m)
+      declare -r link=$main
+      declare -r type=1
+      ;;
+    s)
+      declare -r link="${OPTARG}"
+      ;;
+    l)
+      declare -r link="${OPTARG}"
+      declare -r type=1
+      ;;
+    q)
+      if [ "${OPTARG}" = "?" ]; then
+        youtube-dl -F $link
+        exit 0
+      else
+        declare -r quality="${OPTARG}"
+      fi
+      ;;
+    p)
+      declare -r path="${OPTARG}"
+      ;;
+    n)
+      declare -r name="${OPTARG}"
+      ;;
+    r)
+      declare -r rate="${OPTARG}"
+      ;;
+    c)
+      #~ ffmpeg -i audio.xxx -c:a flac audio.flac
+      if [ -d "${OPTARG}" ]; then
+        #~ dir="${OPTARG//\ /\\\ }"
+        while read l; do
+          #~ in="${l//\ /\\\ }"
+          #~ echo $l
+          #~ in="$(sanatize $l)"
+          #~ in="$l"
+          #~ special=$'`!#$^&*(){}|[]\\;\'",<>? '
+          #~ for ((i=0; i < ${#special}; i++)); do
+            #~ char="${special:i:1}"
+            #~ in="${in//$char/\\$char}"
+            #~ echo "$in"
+          #~ done
+          #~ out="${in%.*}"
+          #~ out+=".flac"
+          #~ echo $dir
+          #~ echo ffmpeg -i $dir$in -c:a flac $dir$out
+          #ffmpeg -i "$dir$l" -c:a flac "$dir$out"
+          #~ l="${l//\ /\\\ }"
+          echo ffmpeg -i "$l" -c:a "${l%.*}.flac"
+          ffmpeg -i "$OPTARG$l" -c:a "${l%.*}.flac"
+        done <<< "$(ls $OPTARG)"
+        exit 0
+      else
+        new="${OPTARG%.*}"
+        new+=".flac"
+        ffmpeg -i "${OPTARG}" -c:a flac "$new"
+        exit 0
+      fi
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      help_screen
+      exit 1
+      ;;
+    :)
+      echo "Option -$OPTARG requires an argument." >&2
+      help_screen
+      exit 1
+      ;;
+  esac
+done #while getopts ":hl:s:m:q:" opt; do
+if [ -z $type ]; then output+=" --no-playlist"
+else output+=" --yes-playlist"; fi
+if [ ! -z $rate ]; then output+=" -r $rate"
+else if [ $type = "1" ]; then output+=" -r 512K"
+  else output+=" -r 1M"; fi; fi
+if [ -z $quality ]; then output+=" -f 'best[ext=mp4]'"
+else output+=" -f $quality"; fi
+if [ ! -z "${name}" ]; then output+=" -o \"./$name.%(ext)s\""
+else output+=" -o \"./[%(upload_date)s] %(title)s [%(uploader)s].%(ext)s\" $link"; fi
+echo $output
+eval $output
+echo ""
+echo "finished download"
+echo ""
+#~ echo "end of script"
+exit 0
