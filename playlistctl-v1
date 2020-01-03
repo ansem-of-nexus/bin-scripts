@@ -1,0 +1,111 @@
+#!/bin/bash
+#
+# pulls and checks from playlist, as well as makes to playlist
+#
+#
+# Don't edit past this line unless you know what you are doing
+#
+# making for loop ignore spaces
+if [ -f "$2" ]; then declare -r playlist="$(cat $2 | grep -v ^\#)"; fi
+declare -r folder="$3"
+IFS=$(echo -en "\n\b")
+function help_screen () {
+  echo "Usage: playlistctl [option] 'playlist' 'folder'"
+  echo ""
+  echo "-p pull files in playlist to folder"
+  echo "-v verify files in playlist are in folder"
+  echo "-c check files in folder against playlist"
+  echo "-f make playlist from files in folder"
+  echo ""
+  }
+function file_copy () {
+  while read l; do
+    local file="${l%[[:cntrl:]]}"
+    rsync -WhP --ignore-existing "$file" "$folder"
+  done <<< "$playlist"
+  }
+function file_verify () {
+  while read l; do
+    if [ ! -f "$l" ]; then
+      echo "File not found: $l"
+      read -p "do you want to copy file? (y/n): " -n 1 -r
+      if [[ $REPLY =~ ^[Yy]$ ]]; then rsync -hPW "$l" "$folder"; fi
+    fi
+  done
+  echo "finished reading playlist"
+  }
+function folder_check () {
+  local flist="$(find $folder -maxdepth 1 -not -type d)"
+  flist=${flist//"$folder/"/}
+  while read l; do
+    local filename=${l##*/}
+    filename=${filename%[[:cntrl:]]}
+    flist=${flist/"$filename"/}
+  done <<< "$playlist"
+  echo "$flist"
+  while read l; do
+    if [ ! "$l" = "" ]; then
+      if [ ! -d "$folder/plc_tmp" ]; then mkdir "$folder/plc_tmp"; fi
+      mv "$folder/$l" "$folder/plc_tmp/"
+    fi #if [ ! "$l" = "" ]; then
+  done <<< "$flist"
+  }
+function folder_list () {
+  local flist="$(find $folder -maxdepth 1 -not -type d)"
+  flist=${flist//"$folder/"/}
+  if [ ! -f "$1" ]; then
+    touch $1
+    echo "#EXTM3U" > "$1"
+  fi
+  while read i; do
+    file_duration="$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 $folder/$i)"
+    file_duration="${file_duration%%.*}"
+    # entry 1
+    echo "#EXTINF:$file_duration:${i%.*}" >> "$1"
+    # entry 2
+    echo "$folder/$i" >> "$1"
+  done <<< "$flist"
+  }
+if [ ! "$#" -eq 3 ]; then
+  help_screen
+  exit 1
+else
+  while getopts ":hpvcf" opt; do
+    case $opt in
+      h)
+	help_screen
+	exit 0
+	;;
+      p)
+	file_copy
+	exit 0
+	;;
+      v)
+	file_verify
+	exit 0
+	;;
+      c)
+	folder_check
+	exit 0
+	;;
+      f)
+	folder_list $2
+	exit 0
+	;;
+      \?)
+	echo "Invalid option: -$OPTARG" >&2
+	help_screen
+	exit 1
+	;;
+      :)
+	echo "Option -$OPTARG requires an argument." >&2
+	help_screen
+	exit 1
+	;;
+    esac
+  done #while getopts ":hcvtf" opt; do
+fi
+echo ""
+exit 0
+#
+# To do list:

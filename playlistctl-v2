@@ -1,0 +1,168 @@
+#!/bin/bash
+# playlist vs folder requires compare command
+# copying files optionally requires rsync
+# folder to play list requires ffprobe
+#
+# setting software
+#~ declare -r fm='thunar'
+#~ declare -r ed='geany'
+#~ declare -r te='terminator -x'
+#
+# Don't edit past this line unless you know what you are doing
+#
+# help screen
+function help_screen () { #incomplete
+  echo "Usage: playlistctl [option] 'playlist' 'folder'"
+  echo ""
+  echo "-h display this screen"
+  echo "-d set destination folder"
+  echo "-p set playlist file"
+  echo "-1 playlist-to-folder"
+  echo "-2 playlist-to-folder-update"
+  echo "-3 playlist-file-check"
+  echo "-4 folder-to-playlist"
+  echo "-5 folder-vs-playlist"
+  echo ""
+  }
+# voiding variables
+path=""
+rsync=""
+yes=""
+# setting script information
+#~ script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+#~ script_name="$(basename "${BASH_SOURCE[0]}")"
+# checking path, to force path use
+#~ if [ -z $path ]; then echo "path must be set with '-p /path/to/stuff'" && exit 1; fi
+# making for loop ignore spaces
+IFS=$(echo -en "\n\b")
+# functions
+function file_copy () { #remaded
+  if [ -z $rsync ]; then
+    rsync -hP "$1" "$2"
+  else
+    cp "$1" "$2"
+  fi
+  }
+function playlist-to-folder () { #remaded
+  while read l; do
+    l="${l%[[:cntrl:]]}"
+    if [ -f "$l" ]; then
+      echo "file found: $l"
+      local n="$path${l##*\/}"
+      if [ -f $n ]; then
+        echo "file in target"
+      else
+        echo "copying"
+        file_copy "${l%[[:cntrl:]]}" "$path"
+      fi
+    else
+      echo "file not found: $l"
+    fi
+  done <<< "$playlist_files"
+  echo "finished reading playlist"
+  }
+function playlist-to-folder-update () { #needs work
+  while read l; do
+    if [ ! -f "$l" ]; then
+      echo "File not found: $l"
+      read -p "do you want to copy file? (y/n): " -n 1 -r
+      if [[ $REPLY =~ ^[Yy]$ ]]; then file_copy "$l" "$path"; fi
+    fi
+  done <<< $playlist
+  echo "finished reading playlist"
+  }
+function playlist-file-check () { #new
+  while read l; do
+    l=${l%[[:cntrl:]]}
+    if [ ! -f $l ]; then
+      echo "not found: $l"
+    fi
+  done <<< $playlist_files
+  }
+function folder-to-playlist () { #updated
+  local flist="$(find $path -maxdepth 1 -not -type d|sort)"
+  if [ ! -f "$playlist_location" ]; then
+    touch "$playlist_location"
+    echo "#EXTM3U" > "$playlist_location"
+  fi
+  while read f; do
+    local file_duration="$(ffprobe -v quiet -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 $f)"
+    file_duration="${file_duration%%.*}"
+    local file_name="${f##*\/}"
+    # entry 1
+    echo "#EXTINF:$file_duration,$file_name" >> "$playlist_location"
+    # entry 2
+    echo "$f" >> "$playlist_location"
+  done <<< "$flist"
+  }
+function folder-vs-playlist () { #updating
+  local compare=$(comm -3 <(echo "$playlist_files") <(ls -1 $path))
+  while read l; do
+    case "$l" in
+      \	*)
+        echo "F: ${l/\	}"
+        ;;
+      *)
+        echo "P: $l"
+        ;;
+    esac
+  done <<< "$compare"
+  }
+# parsing out arguments
+while getopts ":hd:p:ry12345" opt; do
+  case $opt in
+    h)
+      help_screen
+      exit 0
+    ;;
+    d)
+      declare -r path="${OPTARG}"
+    ;;
+    p)
+      declare -r playlist_location="${OPTARG}"
+      if [ -f "${OPTARG}" ]; then
+        declare -r playlist_list="$(cat "${OPTARG}")"
+        declare -r playlist_files="$(cat "${OPTARG}"|grep -Fv "#")"
+      else
+        echo "playlist not found"
+      fi
+    ;;
+    r)
+      declare -r rsync=1
+    ;;
+    y)
+      declare -r yes=1
+    ;;
+    1)
+      playlist-to-folder
+    ;;
+    2)
+      playlist-to-folder-update
+    ;;
+    3)
+      playlist-file-check
+    ;;
+    4)
+      folder-to-playlist
+    ;;
+    5)
+      folder-vs-playlist
+    ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      help_screen
+      exit 1
+    ;;
+    :)
+      echo "Option -$OPTARG requires an argument." >&2
+      help_screen
+      exit 1
+    ;;
+  esac #case $opt in
+done #while getopts "??" opt; do
+exit 0
+#
+# To do list:
+#
+# add auto yes?
+# playlist to folder rename $tmp
