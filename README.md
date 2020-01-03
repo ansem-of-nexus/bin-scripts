@@ -12,6 +12,3 @@ scripts to automate tasks, like uncompressing archives, manipulating music playl
 ---
 * **ytd**
   - simplifies youtube-dl commands and applies presets to the command
----
-* **transmission-pipemenu**
-  - shows transmission controlls, and a list of torrents, with controlls.
