@@ -1,0 +1,145 @@
+#!/bin/bash
+declare -r interface="$1"
+step=1
+wait=1
+state=0
+function help_screen () {
+  echo "command [type] url [options]"
+  echo "    -h for this screen"
+  echo "types are:"
+  echo "    -w watch interface"
+  echo "    -r reset interface"
+  echo "    -a show ip adress"
+  echo "    -s sync date/time"
+  echo ""
+  exit 0
+  }
+  
+function watch {
+# log network conection and internet connection
+  while true; do
+    o=$(date +%k:%M:%S)
+    if [[ $(ls /sys/class/net/ | grep -v lo) != null ]]; then
+      o+=" - Interface present"
+      #~ wget -q --spider http://google.com
+      echo -e "GET http://google.com HTTP/1.0\n\n" | nc google.com 80 > /dev/null 2>&1""
+      spider="$?"
+      #~ o+="[nc:$spider,state:$state]"
+      if [ ! $spider -eq $state ]; then
+        state=$spider
+        step=0
+        wait=1
+      fi #if ! $? -eq $state
+      case $state in
+        0)
+          o+=" - Connected:Online"
+          ;;
+        1)
+          o+=" - Connected:Offline"
+          ;;
+        2)
+          o+=" - Not Connected"
+          ;;
+      esac #case $state in
+    else #if [[ $(ls /sys/class/net/ | grep -v lo) != null ]]; then
+      o+=" - No Interface"
+    fi #if [[ $(ls /sys/class/net/ | grep -v lo) != null ]]; then
+    #~ o+="[step:$step]"
+    echo $o
+    interval
+  done
+  #~ cat /sys/class/net/*device*/carrier 0=no-con 1=yes-con
+  }
+
+function reset {
+  network="$(nmcli dev)"
+  network="${network#*$interface}"
+  network="${network%%[[:cntrl:]]*}"
+  network="${network% *}"
+  network="${network##*  }"
+  #~ network="${network// /_}"
+  #~ echo \"$network\"
+  echo "network:$network"
+  nmcli con down "$network"
+  sleep 10s
+  result="starting"
+  while [ ! $result = "0" ]; do
+    step=0
+    wait=5
+    interval
+    echo "atempting reconection"
+    nmcli con up "$network"
+    result=$?
+  done
+  }
+
+function interval {
+  ((step ++)) #iterating count
+  case $wait in
+    1) #seconds of sleep per step
+      if [ "$step" = 60 ];then #check every second for a minute*
+        wait=5
+        step=1
+      fi #if step
+    ;;
+    5) #seconds of sleep per step
+      if [ "$step" = 60 ];then #check every 5 second for 5 minute*
+        wait=30
+        step=1
+      fi #if step
+    ;;
+    #~ 30) #seconds of sleep per step
+      #~ if [ "$step" = 8 ];then  #check every 30 seconds for 4 minute*
+        #~ wait=60
+        #~ step=1
+      #~ fi #if step
+    #~ ;;
+    #* time inbetween waits is "time set" plus "execution time"
+  esac
+  sleep "$wait"
+  }
+
+while getopts ":hi:wr:as" opt; do
+  case $opt in
+    h)
+      help_screen
+      exit 0
+      ;;
+    i)
+      declare -r interface="$OPTARG"
+      ;;
+    w)
+      watch
+      exit 0
+      ;;
+    r)
+      reset "$OPTARG"
+      ;;
+    a)
+      #~ echo $(dig +short myip.opendns.com @resolver1.opendns.com)
+      echo $(curl icanhazip.com)
+      exit 0
+      ;;
+    s)
+      ntpdate -q 0.fedora.pool.ntp.org
+      exit 0
+      ;;
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      help_screen
+      exit 1
+      ;;
+    :)
+      echo "Option -$OPTARG requires an argument." >&2
+      help_screen
+      exit 1
+      ;;
+  esac #case $opt in
+done #while getopts "" opt; do
+
+## notes
+# http://wifi.lvccld.org/unfiltered.html?&hwc_ip=204.62.64.73&hwc_port=32830&token=0DUYwMDY5yc81hfj1aYD0Q!!&dest=detectportal.firefox.com/
+#~ $ date ; read -t 10 -p "Hit ENTER or wait ten seconds" ; echo ; date
+#~ Tue Feb 28 22:29:15 WAST 2012
+#~ Hit ENTER or wait ten seconds
+#~ Tue Feb 28 22:29:25 WAST 2012

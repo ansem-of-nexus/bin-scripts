@@ -1,0 +1,20 @@
+#!/bin/bash
+# log network conection and internet connection
+while true; do
+    o=$(date +%k:%M:%S)
+	if [[ $(ls /sys/class/net/ | grep -v lo) != null ]]; then
+        o=$(echo $o" - interface present")
+#        wget -q --spider http://google.com
+        echo -e "GET http://google.com HTTP/1.0\n\n" | nc google.com 80 > /dev/null 2>&1""
+	    if [ $? -eq 0 ]; then
+            o=$(echo $o" - internet online")
+	    else
+            o=$(echo $o" - internet offline")
+	    fi
+	else
+        o=$(echo $o" - interface unavalible")
+	fi
+    echo $o
+    sleep $1
+done
+# cat /sys/class/net/*device*/carrier 0=no-con 1=yes-con
