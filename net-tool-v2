@@ -33,16 +33,14 @@ function watch {
             o+=" - Connected"
             ;;
       esac # case $check_1 in
-      if [ $check_1 -eq $state_1 ]; then
-        #saving check_1 for next loop
+      if [ $check_1 -eq $state_1 ] && [ ! $check_1 -eq 0 ]; then
         echo -e "GET http://google.com HTTP/1.0\n\n" | nc google.com 80 > /dev/null 2>&1""
-        spider="$?"
-        #~ o+="[nc:$spider,state:$state]"
-        if [ ! $spider -eq $state ]; then
+        spcheck_2="$?"
+        if [ ! $check_2 -eq $state_2 ]; then
           step=0
           wait=1
-        fi #if ! $? -eq $state
-        case $state in
+        fi #if [ ! $check_2 -eq $state_2 ]; then
+        case $check_2 in
           0)
             o+=" - Internet"
             ;;
@@ -52,19 +50,21 @@ function watch {
           2)
             o+=" - No Connection"
             ;;
-        esac #case $state in
-        state=$spider
-      else #if [ ! $check_1 -eq $state_1 ]; then
-        echo "else"
-      fi #if [ ! $check_1 -eq $state_1 ]; then
+        esac #case $state_2 in
+        # saving check_2 for next loop
+        state_2=$check_2
+      else #if [ $check_1 -eq $state_1 ] && [ ! $check_1 -eq 0 ]; then
+        o+=" - Disconnected"
+      fi #if [ $check_1 -eq $state_1 ] && [ ! $check_1 -eq 0 ]; then
       #saving check_1 for next loop
       state_1=$check_1
+      #printing results
+      echo $o
+      interval
     else #if [[ $(ls /sys/class/net/ | grep -v lo) != null ]]; then
       o+=" - No Interfaces"
+      read -p "Hit ENTER when interfaces are present" ; echo 
     fi #if [[ $(ls /sys/class/net/ | grep -v lo) != null ]]; then
-    #~ o+="[step:$step]"
-    echo $o
-    interval
   done
   #~ cat /sys/class/net/*device*/carrier 0=no-con 1=yes-con
   }
@@ -75,8 +75,6 @@ function reset {
   network="${network%%[[:cntrl:]]*}"
   network="${network% *}"
   network="${network##*  }"
-  #~ network="${network// /_}"
-  #~ echo \"$network\"
   echo "network:$network"
   nmcli con down "$network"
   sleep 10s
@@ -114,25 +112,23 @@ function interval {
     #~ ;;
     #* time inbetween waits is "time set" plus "execution time"
   esac
-  sleep "$wait"
+  read -t $wait -p "Hit ENTER or wait $wait seconds" 
+  #sleep "$wait"
   }
 
-while getopts ":hi:w:r:as" opt; do
+while getopts ":hwras" opt; do
   case $opt in
     h)
       help_screen
       exit 0
       ;;
-    i)
-      declare -r interface="$OPTARG"
-      ;;
     w)
-      declare -r interface="$OPTARG"
+      if [ -z interface ]; then; exit 1; fi
       watch
       exit 0
       ;;
     r)
-      declare -r interface="$OPTARG"
+      if [ -z interface ]; then; exit 1; fi
       reset
       ;;
     a)
@@ -162,5 +158,5 @@ done #while getopts "" opt; do
 #~ Tue Feb 28 22:29:15 WAST 2012
 #~ Hit ENTER or wait ten seconds
 #~ Tue Feb 28 22:29:25 WAST 2012
-      #~ wget -q --spider http://google.com
+#~ wget -q --spider http://google.com
 # is -i even needed, interface selection is really needed in the script
