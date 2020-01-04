@@ -18,31 +18,49 @@ function help_screen () {
 function watch {
 # log network conection and internet connection
   while true; do
+    # starts output with time of execution
     o=$(date +%k:%M:%S)
+    # checking any interfaces exist
     if [[ $(ls /sys/class/net/ | grep -v lo) != null ]]; then
       o+=" - Interface present"
-      #~ wget -q --spider http://google.com
-      echo -e "GET http://google.com HTTP/1.0\n\n" | nc google.com 80 > /dev/null 2>&1""
-      spider="$?"
-      #~ o+="[nc:$spider,state:$state]"
-      if [ ! $spider -eq $state ]; then
+      # checking provided interface for connection
+      check_1="$(cat /sys/class/net/$interface/carrier)"
+      case $check_1 in
+          0)
+            o+=" - disconnected"
+            ;;
+          1)
+            o+=" - Connected"
+            ;;
+      esac # case $check_1 in
+      if [ $check_1 -eq $state_1 ]; then
+        #saving check_1 for next loop
+        echo -e "GET http://google.com HTTP/1.0\n\n" | nc google.com 80 > /dev/null 2>&1""
+        spider="$?"
+        #~ o+="[nc:$spider,state:$state]"
+        if [ ! $spider -eq $state ]; then
+          step=0
+          wait=1
+        fi #if ! $? -eq $state
+        case $state in
+          0)
+            o+=" - Internet"
+            ;;
+          1)
+            o+=" - No Internet"
+            ;;
+          2)
+            o+=" - No Connection"
+            ;;
+        esac #case $state in
         state=$spider
-        step=0
-        wait=1
-      fi #if ! $? -eq $state
-      case $state in
-        0)
-          o+=" - Connected:Online"
-          ;;
-        1)
-          o+=" - Connected:Offline"
-          ;;
-        2)
-          o+=" - Not Connected"
-          ;;
-      esac #case $state in
+      else #if [ ! $check_1 -eq $state_1 ]; then
+        echo "else"
+      fi #if [ ! $check_1 -eq $state_1 ]; then
+      #saving check_1 for next loop
+      state_1=$check_1
     else #if [[ $(ls /sys/class/net/ | grep -v lo) != null ]]; then
-      o+=" - No Interface"
+      o+=" - No Interfaces"
     fi #if [[ $(ls /sys/class/net/ | grep -v lo) != null ]]; then
     #~ o+="[step:$step]"
     echo $o
@@ -99,7 +117,7 @@ function interval {
   sleep "$wait"
   }
 
-while getopts ":hi:wr:as" opt; do
+while getopts ":hi:w:r:as" opt; do
   case $opt in
     h)
       help_screen
@@ -109,11 +127,13 @@ while getopts ":hi:wr:as" opt; do
       declare -r interface="$OPTARG"
       ;;
     w)
+      declare -r interface="$OPTARG"
       watch
       exit 0
       ;;
     r)
-      reset "$OPTARG"
+      declare -r interface="$OPTARG"
+      reset
       ;;
     a)
       #~ echo $(dig +short myip.opendns.com @resolver1.opendns.com)
@@ -138,8 +158,9 @@ while getopts ":hi:wr:as" opt; do
 done #while getopts "" opt; do
 
 ## notes
-# http://wifi.lvccld.org/unfiltered.html?&hwc_ip=204.62.64.73&hwc_port=32830&token=0DUYwMDY5yc81hfj1aYD0Q!!&dest=detectportal.firefox.com/
 #~ $ date ; read -t 10 -p "Hit ENTER or wait ten seconds" ; echo ; date
 #~ Tue Feb 28 22:29:15 WAST 2012
 #~ Hit ENTER or wait ten seconds
 #~ Tue Feb 28 22:29:25 WAST 2012
+      #~ wget -q --spider http://google.com
+# is -i even needed, interface selection is really needed in the script
