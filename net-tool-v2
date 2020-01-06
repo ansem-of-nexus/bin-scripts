@@ -1,8 +1,8 @@
 #!/bin/bash
-declare -r interface="$1"
 step=1
 wait=1
-state=0
+state_1=1
+state_2=0
 function help_screen () {
   echo "command [type] url [options]"
   echo "    -h for this screen"
@@ -33,9 +33,9 @@ function watch {
             o+=" - Connected"
             ;;
       esac # case $check_1 in
-      if [ $check_1 -eq $state_1 ] && [ ! $check_1 -eq 0 ]; then
+      if [ $check_1 = $state_1 ] && [ $check_1 != "0" ]; then
         echo -e "GET http://google.com HTTP/1.0\n\n" | nc google.com 80 > /dev/null 2>&1""
-        spcheck_2="$?"
+        check_2="$?"
         if [ ! $check_2 -eq $state_2 ]; then
           step=0
           wait=1
@@ -112,23 +112,23 @@ function interval {
     #~ ;;
     #* time inbetween waits is "time set" plus "execution time"
   esac
-  read -t $wait -p "Hit ENTER or wait $wait seconds" 
+  read -t $wait -p "Hit ENTER or wait $wait seconds"; echo; echo
   #sleep "$wait"
   }
 
-while getopts ":hwras" opt; do
+while getopts ":hw:r:as" opt; do
   case $opt in
     h)
       help_screen
       exit 0
       ;;
     w)
-      if [ -z interface ]; then; exit 1; fi
+      declare -r interface="${OPTARG}"
       watch
       exit 0
       ;;
     r)
-      if [ -z interface ]; then; exit 1; fi
+      declare -r interface="${OPTARG}"
       reset
       ;;
     a)
@@ -159,4 +159,3 @@ done #while getopts "" opt; do
 #~ Hit ENTER or wait ten seconds
 #~ Tue Feb 28 22:29:25 WAST 2012
 #~ wget -q --spider http://google.com
-# is -i even needed, interface selection is really needed in the script
