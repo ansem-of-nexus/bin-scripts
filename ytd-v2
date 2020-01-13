@@ -20,6 +20,7 @@ function help_screen () {
   echo "options are:"
   echo "    -p for path"
   echo "    -q set video/audio resolution/quality"
+  echo "       ? to list possible video/audio options"
   echo "    -r limit download rate (e.g. 1K, 1M, 1G)"
   exit 0
   }
@@ -72,10 +73,12 @@ while getopts "hms:l:q:p:n:r:c:" opt; do
     c)
       #~ ffmpeg -i audio.xxx -c:a flac audio.flac
       if [ -d "${OPTARG}" ]; then
+        echo "${OPTARG}"
         #~ dir="${OPTARG//\ /\\\ }"
         while read l; do
           #~ in="${l//\ /\\\ }"
-          #~ echo $l
+          in="${l}"
+          echo $l
           #~ in="$(sanatize $l)"
           #~ in="$l"
           #~ special=$'`!#$^&*(){}|[]\\;\'",<>? '
@@ -84,15 +87,15 @@ while getopts "hms:l:q:p:n:r:c:" opt; do
             #~ in="${in//$char/\\$char}"
             #~ echo "$in"
           #~ done
-          #~ out="${in%.*}"
-          #~ out+=".flac"
+          out="${in%.*}"
+          out+=".flac"
           #~ echo $dir
           #~ echo ffmpeg -i $dir$in -c:a flac $dir$out
           #ffmpeg -i "$dir$l" -c:a flac "$dir$out"
           #~ l="${l//\ /\\\ }"
-          echo ffmpeg -i "$l" -c:a "${l%.*}.flac"
-          ffmpeg -i "$OPTARG$l" -c:a "${l%.*}.flac"
-        done <<< "$(ls $OPTARG)"
+          echo ffmpeg -i \"$OPTARG$in\" -c:a \"$OPTARG$out\"
+          ffmpeg -i "${OPTARG}$in" -c:a "${OPTARG}$out"
+        done <<< "$(ls -1 $OPTARG)"
         exit 0
       else
         new="${OPTARG%.*}"
