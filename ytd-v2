@@ -22,6 +22,7 @@ function help_screen () {
   echo "    -q set video/audio resolution/quality"
   echo "       ? to list possible video/audio options"
   echo "    -r limit download rate (e.g. 1K, 1M, 1G)"
+  echo "    -o open option adding. directly added to command"
   exit 0
   }
 function sanatize () {
@@ -36,7 +37,7 @@ function sanatize () {
 output="youtube-dl -i --abort-on-unavailable-fragment"
 type=""
 quality=""
-while getopts "hms:l:q:p:n:r:c:" opt; do
+while getopts "hms:l:q:p:n:r:c:o:" opt; do
   case $opt in
     h)
       help_screen
@@ -73,29 +74,24 @@ while getopts "hms:l:q:p:n:r:c:" opt; do
     c)
       #~ ffmpeg -i audio.xxx -c:a flac audio.flac
       if [ -d "${OPTARG}" ]; then
-        echo "${OPTARG}"
-        #~ dir="${OPTARG//\ /\\\ }"
         while read l; do
-          #~ in="${l//\ /\\\ }"
-          in="${l}"
-          echo $l
-          #~ in="$(sanatize $l)"
-          #~ in="$l"
-          #~ special=$'`!#$^&*(){}|[]\\;\'",<>? '
-          #~ for ((i=0; i < ${#special}; i++)); do
-            #~ char="${special:i:1}"
-            #~ in="${in//$char/\\$char}"
-            #~ echo "$in"
-          #~ done
-          out="${in%.*}"
-          out+=".flac"
-          #~ echo $dir
-          #~ echo ffmpeg -i $dir$in -c:a flac $dir$out
-          #ffmpeg -i "$dir$l" -c:a flac "$dir$out"
-          #~ l="${l//\ /\\\ }"
-          echo ffmpeg -i \"$OPTARG$in\" -c:a \"$OPTARG$out\"
-          ffmpeg -i "${OPTARG}$in" -c:a "${OPTARG}$out"
-        done <<< "$(ls -1 $OPTARG)"
+          first="${OPTARG}${l}"
+          special=$'`!#$^&(){}|[]\\;\'",<> '
+          for ((i=0; i < ${#special}; i++)); do
+            char="${special:i:1}"
+            first="${first//$char/\\$char}"
+            echo "${char}:${first}"
+          done
+          first="${first//\*/\\\*}"
+          first="${first//\?/\\\?}"
+          #first="${first//\./\\\.}"
+          second="${first%.*}"
+          second+=".flac"
+          c="ffmpeg -i ${first} -c:a flac ${second}"
+          echo "$c"
+          #eval "$c"
+          echo;sleep 1s
+        done <<< "$(ls -1 ${OPTARG})"
         exit 0
       else
         new="${OPTARG%.*}"
@@ -103,6 +99,9 @@ while getopts "hms:l:q:p:n:r:c:" opt; do
         ffmpeg -i "${OPTARG}" -c:a flac "$new"
         exit 0
       fi
+      ;;
+    o)
+      output+="${OPTARG}"
       ;;
     \?)
       echo "Invalid option: -$OPTARG" >&2
@@ -126,7 +125,7 @@ else output+=" -f $quality"; fi
 if [ ! -z "${name}" ]; then output+=" -o \"./$name.%(ext)s\""
 else output+=" -o \"./[%(upload_date)s] %(title)s [%(uploader)s].%(ext)s\" $link"; fi
 echo $output
-eval $output
+eval "$output"
 echo ""
 echo "finished download"
 echo ""
