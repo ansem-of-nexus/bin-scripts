@@ -120,7 +120,7 @@ else output+=" --yes-playlist"; fi
 if [ ! -z $rate ]; then output+=" -r $rate"
 else if [ $type = "1" ]; then output+=" -r 512K"
   else output+=" -r 1M"; fi; fi
-if [ -z $quality ]; then output+=" -f 'best[ext=mp4]'"
+if [ -z $quality ]; then output+=" -f 'best[ext=mp4][height<=720]'"
 else output+=" -f $quality"; fi
 if [ ! -z "${name}" ]; then output+=" -o \"./$name.%(ext)s\""
 else output+=" -o \"./[%(upload_date)s] %(title)s [%(uploader)s].%(ext)s\" $link"; fi
