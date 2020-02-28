@@ -101,7 +101,7 @@ while getopts "hms:l:q:p:n:r:c:o:" opt; do
       fi
       ;;
     o)
-      output+="${OPTARG}"
+      output+=" ${OPTARG}"
       ;;
     \?)
       echo "Invalid option: -$OPTARG" >&2

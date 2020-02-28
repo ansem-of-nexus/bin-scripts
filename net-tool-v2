@@ -7,14 +7,46 @@ function help_screen () {
   echo "command [type] url [options]"
   echo "    -h for this screen"
   echo "types are:"
+  echo "    -t test connection to internet"
   echo "    -w watch interface"
   echo "    -r reset interface"
   echo "    -a show ip adress"
   echo "    -s sync date/time"
   echo ""
-  exit 0
-  }
-  
+  exit 0;}
+function test {
+  # test internet connection if any
+    # starts output with time of execution
+    o=$(date +%k:%M:%S)
+    # attempt to connect to google.com
+    echo -e "GET http://google.com HTTP/1.0\n\n" | nc google.com 80 > /dev/null 2>&1""
+    check_1="$?"
+    case "$check_1" in
+      0)
+        o+=" - check_1: Internet"
+        ;;
+      1)
+        o+=" - check_1: No Internet"
+        ;;
+      2)
+        o+=" - check_1: No Connection"
+        ;;
+    esac #case $check in
+    curl --silent --head http://www.google.com/ |egrep '20[0-9] Found|30[0-9] Found' > /dev/null
+    check_2="$?"
+    case "$check_2" in
+      0)
+        o+=" - check_2: No Internet"
+        ;;
+      1)
+        o+=" - check_2: Internet"
+        ;;
+      2)
+        o+=" - check_2: No Connection"
+        ;;
+    esac #case $check in
+    echo $o;}
+
 function watch {
 # log network conection and internet connection
   while true; do
@@ -116,11 +148,14 @@ function interval {
   #sleep "$wait"
   }
 
-while getopts ":hw:r:as" opt; do
+while getopts ":htw:r:as" opt; do
   case $opt in
     h)
       help_screen
       exit 0
+      ;;
+    t)
+      test
       ;;
     w)
       declare -r interface="${OPTARG}"
