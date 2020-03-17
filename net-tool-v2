@@ -3,18 +3,19 @@ step=1
 wait=1
 state_1=1
 state_2=0
+state_3=1
 function help_screen () {
   echo "command [type] url [options]"
   echo "    -h for this screen"
   echo "types are:"
-  echo "    -t test connection to internet"
+  echo "    -c check connection to internet"
   echo "    -w watch interface"
   echo "    -r reset interface"
   echo "    -a show ip adress"
   echo "    -s sync date/time"
   echo ""
   exit 0;}
-function test {
+function check {
   # test internet connection if any
     # starts output with time of execution
     o=$(date +%k:%M:%S)
@@ -23,26 +24,26 @@ function test {
     check_1="$?"
     case "$check_1" in
       0)
-        o+=" - check_1: Internet"
+        o+=" - C1:Internet"
         ;;
       1)
-        o+=" - check_1: No Internet"
+        o+=" - C1:No Internet"
         ;;
       2)
-        o+=" - check_1: No Connection"
+        o+=" - C1:No Connection"
         ;;
     esac #case $check in
     curl --silent --head http://www.google.com/ |egrep '20[0-9] Found|30[0-9] Found' > /dev/null
     check_2="$?"
     case "$check_2" in
       0)
-        o+=" - check_2: No Internet"
+        o+=" - C2:No Internet"
         ;;
       1)
-        o+=" - check_2: Internet"
+        o+=" - C2:Internet"
         ;;
       2)
-        o+=" - check_2: No Connection"
+        o+=" - C2:No Connection"
         ;;
     esac #case $check in
     echo $o;}
@@ -56,40 +57,65 @@ function watch {
     if [[ $(ls /sys/class/net/ | grep -v lo) != null ]]; then
       o+=" - Interface present"
       # checking provided interface for connection
-      check_1="$(cat /sys/class/net/$interface/carrier)"
-      case $check_1 in
+      check_2="$(cat /sys/class/net/$interface/carrier)"
+      case $check_2 in
           0)
-            o+=" - disconnected"
+            o+=" - C2:disconnected"
             ;;
           1)
-            o+=" - Connected"
+            o+=" - C2:Connected"
             ;;
-      esac # case $check_1 in
-      if [ $check_1 = $state_1 ] && [ $check_1 != "0" ]; then
+      esac # case $check_2 in
+      if [ $check_2 != $state_1 ]; then
+        step=0
+        wait=1
+      fi #if [ $check_2 != $state_1 ]; then
+      # saving check_2 for next loop
+      state_1=$check_2
+      # check 3
+      if [ $check_2 != "0" ]; then
         echo -e "GET http://google.com HTTP/1.0\n\n" | nc google.com 80 > /dev/null 2>&1""
-        check_2="$?"
-        if [ ! $check_2 -eq $state_2 ]; then
-          step=0
-          wait=1
-        fi #if [ ! $check_2 -eq $state_2 ]; then
-        case $check_2 in
+        check_3="$?"
+        case $check_3 in
           0)
-            o+=" - Internet"
+            o+=" - C3:Internet"
             ;;
           1)
-            o+=" - No Internet"
+            o+=" - C3:No Internet"
             ;;
           2)
-            o+=" - No Connection"
+            o+=" - C3:No Connection"
             ;;
         esac #case $state_2 in
-        # saving check_2 for next loop
-        state_2=$check_2
-      else #if [ $check_1 -eq $state_1 ] && [ ! $check_1 -eq 0 ]; then
-        o+=" - Disconnected"
-      fi #if [ $check_1 -eq $state_1 ] && [ ! $check_1 -eq 0 ]; then
-      #saving check_1 for next loop
-      state_1=$check_1
+        if [ ! $check_3 -eq $state_2 ]; then
+          step=0
+          wait=1
+        fi #if [ ! $check_3 -eq $state_2 ]; then
+        # saving check_3 for next loop
+        state_2=$check_3
+        # starting check 2
+        if [ $check_3 = "0" ]; then
+          curl --silent --head http://www.google.com/ |egrep '20[0-9] Found|30[0-9] Found' > /dev/null
+          check_4="$?"
+          case "$check_4" in
+            0)
+              o+=" - C4:No Internet"
+              ;;
+            1)
+              o+=" - C4:Internet"
+              ;;
+            2)
+              o+=" - C4:No Connection"
+              ;;
+          esac #case $check in
+          if [ ! $check_4 -eq $state_3 ]; then
+            step=0
+            wait=1
+          fi #if [ ! $check_2 -eq $state_2 ]; then
+          # saving check_4 for next loop
+          state_3=$check_4
+        fi #if [ $check_3 = "0" ]; then
+      fi #if [ $check_2 != "0" ]; then
       #printing results
       echo $o
       interval
@@ -97,8 +123,7 @@ function watch {
       o+=" - No Interfaces"
       read -p "Hit ENTER when interfaces are present" ; echo 
     fi #if [[ $(ls /sys/class/net/ | grep -v lo) != null ]]; then
-  done
-  #~ cat /sys/class/net/*device*/carrier 0=no-con 1=yes-con
+  done #while true; do
   }
 
 function reset {
@@ -148,14 +173,14 @@ function interval {
   #sleep "$wait"
   }
 
-while getopts ":htw:r:as" opt; do
+while getopts ":hcw:r:as" opt; do
   case $opt in
     h)
       help_screen
       exit 0
       ;;
-    t)
-      test
+    c)
+      check
       ;;
     w)
       declare -r interface="${OPTARG}"
