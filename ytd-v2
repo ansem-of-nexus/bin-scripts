@@ -2,12 +2,20 @@
 #
 # script to automate configuring a youtube-dl execution
 #
-# setting a default playlist to download
+# setting a default playlist to download triggers by "-m"
 main="main-playlist"
+# default video quality
+quality="'best[ext=mp4][height<=720]'"
+# default video naming
+name="[%(upload_date)s] %(title)s [%(uploader)s]"
 # when combinding quality type, what filetype do you want
 #    list of filetypes can be found in youtube-dl documentation
 file_type="mkv"
 # limits should be set in number and size sets (e.g. 1K, 1M, 1G)
+playlist_rate="512K"
+single_rate="1M"
+# username, password is not set, to prompt entry eaxh time
+username=""
 #
 # DO NOT EDIT pass this line unless you know what you are doing
 #
@@ -25,19 +33,8 @@ function help_screen () {
   echo "    -o open option adding. directly added to command"
   exit 0
   }
-function sanatize () {
-  o="$1"
-  special=$'`!#$^&*(){}|[]\\;\'",<>? '
-  for ((i=0; i < ${#special}; i++)); do
-    char="${special:i:1}"
-    o="${o//$char/\\$char}"
-  done
-  echo "$o"
-  }
 output="youtube-dl -i --abort-on-unavailable-fragment"
-type=""
-quality=""
-while getopts "hms:l:q:p:n:r:c:o:" opt; do
+while getopts "hms:l:q:p:n:r:c:o:iu" opt; do
   case $opt in
     h)
       help_screen
@@ -45,53 +42,51 @@ while getopts "hms:l:q:p:n:r:c:o:" opt; do
       ;;
     m)
       declare -r link=$main
-      declare -r type=1
+      output+=" --yes-playlist"
       ;;
     s)
       declare -r link="${OPTARG}"
+      output+=" --no-playlist"
       ;;
     l)
       declare -r link="${OPTARG}"
-      declare -r type=1
+      output+=" --yes-playlist"
       ;;
     q)
       if [ "${OPTARG}" = "?" ]; then
         youtube-dl -F $link
         exit 0
-      else
-        declare -r quality="${OPTARG}"
-      fi
+      else declare -r quality="${OPTARG}"; fi
       ;;
     p)
-      declare -r path="${OPTARG}"
+      case "${OPTARG}" in
+        *\/) declare -r path="${OPTARG}" ;;
+        *) declare -r path="${OPTARG}/" ;;
+      esac
       ;;
-    n)
-      declare -r name="${OPTARG}"
-      ;;
+    n) declare -r name="${OPTARG}" ;;
     r)
-      declare -r rate="${OPTARG}"
+      case "${OPTARG}" in
+        0) declare -r rate="" ;;
+        s) declare -r rate="$single_rate" ;;
+        l) declare -r rate="$playlist_rate" ;;
+        *) declare -r rate="${OPTARG}" ;;
+      esac
       ;;
     c)
       #~ ffmpeg -i audio.xxx -c:a flac audio.flac
       if [ -d "${OPTARG}" ]; then
         while read l; do
           first="${OPTARG}${l}"
-          special=$'`!#$^&(){}|[]\\;\'",<> '
-          for ((i=0; i < ${#special}; i++)); do
-            char="${special:i:1}"
-            first="${first//$char/\\$char}"
-            echo "${char}:${first}"
-          done
-          first="${first//\*/\\\*}"
-          first="${first//\?/\\\?}"
-          #first="${first//\./\\\.}"
-          second="${first%.*}"
+          second="${OPTARG}${l%.*}"
           second+=".flac"
-          c="ffmpeg -i ${first} -c:a flac ${second}"
-          echo "$c"
+          echo "ffmpeg -i \"${first}\" -c:a flac \"${second}\""
+          ffmpeg -i \"${first}\" -c:a flac \"${second}\"
+#          c="ffmpeg -i ${first} -c:a flac ${second}"
+#          echo "$c"
           #eval "$c"
           echo;sleep 1s
-        done <<< "$(ls -1 ${OPTARG})"
+        done <<< $(ls -1 "${OPTARG}")
         exit 0
       else
         new="${OPTARG%.*}"
@@ -100,9 +95,8 @@ while getopts "hms:l:q:p:n:r:c:o:" opt; do
         exit 0
       fi
       ;;
-    o)
-      output+=" ${OPTARG}"
-      ;;
+    o) output+=" ${OPTARG}" ;;
+    u) output+="$username" ;;
     \?)
       echo "Invalid option: -$OPTARG" >&2
       help_screen
@@ -114,20 +108,59 @@ while getopts "hms:l:q:p:n:r:c:o:" opt; do
       exit 1
       ;;
   esac
-done #while getopts ":hl:s:m:q:" opt; do
-if [ -z $type ]; then output+=" --no-playlist"
-else output+=" --yes-playlist"; fi
-if [ ! -z $rate ]; then output+=" -r $rate"
-else if [ $type = "1" ]; then output+=" -r 512K"
-  else output+=" -r 1M"; fi; fi
-if [ -z $quality ]; then output+=" -f 'best[ext=mp4][height<=720]'"
-else output+=" -f $quality"; fi
-if [ ! -z "${name}" ]; then output+=" -o \"./$name.%(ext)s\""
-else output+=" -o \"./[%(upload_date)s] %(title)s [%(uploader)s].%(ext)s\" $link"; fi
+done #while getopts ":??" opt; do
+if [ ! -z "$rate" ]; then output+=" -r $rate";fi
+output+=" -f $quality"
+if [ ! -z "${path}" ]; then output+=" -o \"${path}${name}.%(ext)s\""
+else output+=" -o \"./${name}.%(ext)s\""; fi
+output+=" $link"
+# moving to printing and executing of command
 echo $output
 eval "$output"
 echo ""
 echo "finished download"
 echo ""
-#~ echo "end of script"
+#end of script
 exit 0
+# to-do list
+# add playlist item selection
+# fix dir file convergence
+#
+#function sanatize () {
+#  o="$1"
+#  special=$'`!#$^&*(){}|[]\\;\'",<>? '
+#  for ((i=0; i < ${#special}; i++)); do
+#    char="${special:i:1}"
+#    o="${o//$char/\\$char}"
+#  done
+#  echo "$o"; }
+#    c)
+#      #~ ffmpeg -i audio.xxx -c:a flac audio.flac
+#      if [ -d "${OPTARG}" ]; then
+#        while read l; do
+#          first="${OPTARG}${l}"
+#          special=$'`!#$^&(){}|[]\\;\'",<> '
+#          for ((i=0; i < ${#special}; i++)); do
+#            char="${special:i:1}"
+#            first="${first//$char/\\$char}"
+#            echo "${char}:${first}"
+#          done
+#          first="${first//\*/\\\*}"
+#          first="${first//\?/\\\?}"
+#          #first="${first//\./\\\.}"
+#          second="${first%.*}"
+#          second+=".flac"
+#          c="ffmpeg -i ${first} -c:a flac ${second}"
+#          echo "$c"
+#          #eval "$c"
+#          echo;sleep 1s
+#        done <<< "$(ls -1 ${OPTARG})"
+#        exit 0
+#      else
+#        new="${OPTARG%.*}"
+#        new+=".flac"
+#        ffmpeg -i "${OPTARG}" -c:a flac "$new"
+#        exit 0
+#      fi
+#      ;;
+#
