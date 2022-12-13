@@ -1,0 +1,182 @@
+#!/bin/bash
+function help_screen () {
+  echo "Usage: script [option]"
+  echo ""
+  echo "'file' single files are passed as just a filename"
+  echo "-d 'path' have script look at a directory"
+  echo "  recursively scans directory and uncompress files"
+  echo "-t list filetypes supported by this script"
+  echo ""
+  exit 0;} #function help_screen () {
+function file_types () {
+  echo "File types"
+  echo "  Tarballs"
+  echo "    *.tar"
+  echo "    *.tar.bz2"
+  echo "    *.tar.gz | *.tgz"
+  echo "    *.tar.xz"
+  echo "  Singles"
+  echo "    *.7z"
+  echo "    *.bz2"
+  echo "    *.gz"
+  echo "    *.rar"
+  echo "    *.zip"
+  exit 0 ;} #function file_types () {
+#----------
+# clearing command checks
+#----------
+cc_tar=""
+cc_7z=""
+cc_bz=""
+cc_gz=""
+cc_unar=""
+cc_unrar=""
+cc_zip=""
+function file_logic () {
+  case "$1" in
+  #----------
+  # tar balls
+  #----------
+    *.tar)
+      echo "tar ball found"
+      if [[ ! $cc_7z = "" ]]; then 7za x "$1";
+        elif [[ ! $cc_tar = "" ]]; then tar -xvf "$1";
+        elif [[ ! "$(type -t tar)" = "" ]]; then tar -xvf "$1";
+        else echo "No Command found to unpack tar file";fi
+      ;;
+    *.tar.bz2)
+      echo "tar ball compressed with bzip found"
+      if [[ ! $cc_7z = "" ]]; then 7za x "$1";
+        elif [[ ! $cc_tar = "" ]]; then tar -xvjf "$1";
+        elif [[ ! "$(type -t tar)" = "" ]]; then tar -xvjf "$1";
+        else echo "No Command found to unpack tar file";fi
+      ;;
+    *.tar.gz|*.tgz)
+      echo "tar ball compressed with gunzip found"
+      if [[ ! $cc_7z = "" ]]; then 7za x "$1";
+        elif [[ ! $cc_tar = "" ]]; then tar -xvzf "$1";
+        elif [[ ! "$(type -t tar)" = "" ]]; then tar -xvzf "$1";
+        else echo "No Command found to unpack tar file";fi
+      ;;
+    *.tar.xz)
+      echo "tar ball compressed with xz found"
+      if [[ ! $cc_7z = "" ]]; then 7za x "$1";
+        elif [[ ! $cc_tar = "" ]]; then tar -xvJf "$1";
+        elif [[ ! "$(type -t tar)" = "" ]]; then tar -xvJf "$1";
+        else echo "No Command found to unpack tar file";fi
+      ;;
+  #----------
+  # single types
+  #----------
+    *.7z)
+      echo "7-Zip found"
+      if [[ ! $cc_7z = "" ]]; then 7za x "$1";
+        elif [[ ! $cc_7z = "" ]]; then 7za x "$1";
+        elif [[ ! "$(type -t 7za)" = "" ]]; then 7za x "$1";
+        else echo "No Command found to unpack 7z file";fi
+      ;;
+    *.bz2)
+      echo "bzip found"
+      if [[ ! $cc_7z = "" ]]; then 7za x "$1";
+        elif [[ ! $cc_7z = "" ]]; then 7za x "$1";
+        elif [[ ! $cc_bz = "" ]]; then bzip2 -dk "$1";
+        elif [[ ! "$(type -t bzip2)" = "" ]]; then bzip2 -dk "$1";
+        else echo "No Command found to unpack bzip file";fi
+      ;;
+    *.gz)
+      echo "gunzip found"
+      if [[ ! $cc_7z = "" ]]; then 7za x "$1";
+        elif [[ ! $cc_7z = "" ]]; then 7za x "$1";
+        elif [[ ! $cc_gz = "" ]]; then gzip -d "$1";
+        elif [[ ! "$(type -t gzip)" = "" ]]; then gzip -d "$1";
+        else echo "No Command found to unpack gzip file";fi
+      ;;
+    *.rar|*.cbr)
+      echo "rar found"
+      if [[ ! $cc_7z = "" ]]; then 7za x "$1";
+        elif [[ ! $cc_unar = "" ]]; then unar "$1";
+        elif [[ ! $cc_unrar = "" ]]; then unrar "$1";
+        elif [[ ! "$(type -t unar)" = "" ]]; then unar "$1";
+        elif [[ ! "$(type -t unrar)" = "" ]]; then unrar "$1";
+        else echo "No Command found to unpack rar file";fi
+      ;;
+    *.zip|*.cbz)
+      echo "zip found"
+      if [[ ! $cc_7z = "" ]]; then 7za x "$1";
+        elif [[ ! $cc_zip = "" ]]; then unzip "$1";
+        elif [[ ! "$(type -t unzip)" = "" ]]; then unzip "$1";
+        else echo "No Command found to unpack zip file";fi
+      ;;
+    *)
+      echo "file not reconized"
+      ;;
+  esac
+  echo "finished uncompressing $1"
+  } #fucntion file_logic ()
+function directory_logic () {
+  #verifing aurgumant passed is a directoy
+  if [ ! -d $1 ]; then
+    echo "directory set is not a directory"
+    exit 1
+  fi #if [ ! -d $1 ]; then
+  while read l; do
+    if [ -d "$l" ]; then
+      echo "'$l' is a dirrectory"
+      #recursively call this script again on the directory
+    else
+      echo "'$l' is a file"
+      #pass path and filename to file_logic
+    fi #if [ -d $line ]; then
+  done <<< "$(ls --group-directories-first -1 $1)" #while read line; in
+  } #function directory_logic ()
+function command_check () {
+  if [[ ! "$(type -t 7za)" = "" ]]; then cc_7z=1
+    echo "7za Found for 7zip files";fi
+  if [[ ! "$(type -t tar)" = "" ]]; then cc_tar=1
+    echo "tar Found for Tarball files";fi
+  if [[ ! "$(type -t bzip2)" = "" ]]; then cc_bzip=1
+    echo "bzip2 Found for bzip files";fi
+  if [[ ! "$(type -t gzip)" = "" ]]; then cc_gzip=1
+    echo "gzip Found for Gunzip files";fi
+  if [[ ! "$(type -t unar)" = "" ]]; then cc_unar=1
+    echo "unar Found for rar files";fi
+  if [[ ! "$(type -t unrar)" = "" ]]; then cc_unrar=1
+    echo "unrar Found for rar files";fi
+  if [[ ! "$(type -t unzip)" = "" ]]; then cc_zip=1
+    echo "unzip Found for zip files";fi
+  } #function command_check
+# insert declare -r variables for script location for recurcive calling
+while getopts ":hd:tc" opt; do
+  case $opt in
+    h)
+      help_screen
+      exit 0 ;;
+    d)
+      directory_logic "${OPTARG}"
+      exit 0 ;;
+    t)
+      file_types
+      exit 0 ;;
+    c)
+      command_check
+      exit 0 ;;
+    # handles any input
+    *)
+      file_logic "$1"
+      exit 0 ;;
+    # error handling
+    \?)
+      echo "Invalid option: -$OPTARG" >&2
+      help_screen
+      exit 1 ;;
+    :)
+      echo "Option -$OPTARG requires an argument." >&2
+      help_screen
+      exit 1 ;;
+  esac #case $opt in
+done #while getopts ":h" opt; do
+#####
+# end of script
+#####
+echo "ERROR: end of script reached"
+exit 1
