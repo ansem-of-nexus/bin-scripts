@@ -12,7 +12,6 @@ function help_screen () {
   echo "-f single file"
   echo ""
   exit 0;} #function help_screen () {
-#~ echo "load file_types"
 function file_types () {
   echo "File types"
   echo "  Tarballs"
@@ -32,7 +31,6 @@ IFS=$(echo -en "\n\b")
 # setting variables and checking for them
 declare -r script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 #declare -r script_name="$(basename "${BASH_SOURCE[0]}")"
-#~ echo "clearing variables"
 #----------
 # clearing variables
 # change to "1" to manually approve
@@ -48,9 +46,7 @@ cc_zip=""
 max_depth=""
 individual_folders=""
 #function command_logic () {;} #function command_logic () {}
-#~ echo "load file_logic"
 function file_logic () {
-  #~ echo "called file_logic"
   case "$1" in
   #----------
   # tar balls
@@ -137,9 +133,7 @@ function file_logic () {
       ;;
   esac
   } #fucntion file_logic ()
-#~ echo "load directory_logic"
 function directory_logic () {
-  #~ echo "called directory_logic"
   while read l; do
     if [ -d "$dir_path$l" ]; then
       echo "'$dir_path$l' is a dir"
@@ -150,18 +144,14 @@ function directory_logic () {
     fi #if [ -d $line ]; then
   done <<< "$(ls --group-directories-first -1 $dir_path)" #while read line; in
   } #function directory_logic ()
-#~ echo "load command_logic"
 function command_logic () {
-  #~ echo "called command_logic"
     if [[ "$individual_folders" = "1" ]];then
       if [[ "${OPTARG}" = "unzip" ]]; then
         o="unzip -d $"
       fi
     fi
   }
-#~ echo "load command_check"
 function command_check () {
-  #~ echo "called command_check"
   if [[ ! "$(type -t 7zz)" = "" ]]; then cc_7zz=1
   elif [[ ! "$(type -t 7za)" = "" ]]; then cc_7za=1;fi
   if [[ ! $cc_7zz = "1" || $cc_7za = "1" ]]; then
@@ -173,9 +163,7 @@ function command_check () {
     if [[ ! "$(type -t unzip)" = "" ]]; then cc_zip=1;fi
   fi
   } #function command_check
-#~ echo "load command_print"
 function command_print () {
-  #~ echo "command_print called"
   if [[ ! "$(type -t 7zz)" = "" ]]; then echo "7zz Found for 7zip files";fi
   if [[ ! "$(type -t 7za)" = "" ]]; then echo "7za Found for 7zip files";fi
   if [[ ! "$(type -t tar)" = "" ]]; then echo "tar Found for Tarball files";fi
@@ -185,9 +173,7 @@ function command_print () {
   if [[ ! "$(type -t unrar)" = "" ]]; then echo "unrar Found for rar files";fi
   if [[ ! "$(type -t unzip)" = "" ]]; then echo "unzip Found for zip files";fi
   } #function command_check
-#~ echo "load aurgument checks"
 while getopts ":hd:nstcf:" opt; do
-  #~ echo "checking aurguments"
   case $opt in
     h)
       help_screen
@@ -206,7 +192,6 @@ while getopts ":hd:nstcf:" opt; do
       exit 0 ;;
     # handles any input
     f)
-      #~ echo "single file found"
       file_logic "${OPTARG}"
       exit 0 ;;
     # error handling
