@@ -1,4 +1,5 @@
 #!/bin/bash
+#~ echo "load help_screen"
 function help_screen () {
   echo "Usage: script [option]"
   echo ""
@@ -6,8 +7,12 @@ function help_screen () {
   echo "-d 'path' have script look at a directory"
   echo "  recursively scans directory and uncompress files"
   echo "-t list filetypes supported by this script"
+  echo "-c command check, prints list of commands found"
+  echo "-n no recursive folder scan"
+  echo "-f single file"
   echo ""
   exit 0;} #function help_screen () {
+#~ echo "load file_types"
 function file_types () {
   echo "File types"
   echo "  Tarballs"
@@ -22,47 +27,64 @@ function file_types () {
   echo "    *.rar"
   echo "    *.zip"
   exit 0 ;} #function file_types () {
+# making loops ignore spaces
+IFS=$(echo -en "\n\b")
+# setting variables and checking for them
+declare -r script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+#declare -r script_name="$(basename "${BASH_SOURCE[0]}")"
+#~ echo "clearing variables"
 #----------
-# clearing command checks
+# clearing variables
+# change to "1" to manually approve
 #----------
 cc_tar=""
-cc_7z=""
+cc_7za=""
+cc_7zz=""
 cc_bz=""
 cc_gz=""
 cc_unar=""
 cc_unrar=""
 cc_zip=""
+max_depth=""
+individual_folders=""
+#function command_logic () {;} #function command_logic () {}
+#~ echo "load file_logic"
 function file_logic () {
+  #~ echo "called file_logic"
   case "$1" in
   #----------
   # tar balls
   #----------
     *.tar)
       echo "tar ball found"
-      if [[ ! $cc_7z = "" ]]; then 7za x "$1";
+      if [[ ! $cc_7za = "" ]]; then 7za x "$1";
+        elif [[ ! $cc_7zz = "" ]]; then 7zz x "$1";
         elif [[ ! $cc_tar = "" ]]; then tar -xvf "$1";
-        elif [[ ! "$(type -t tar)" = "" ]]; then tar -xvf "$1";
+        elif [[ ! "$(type -t tar)" = "" ]]; then tar -xvf "$1"; cc_tar="1";
         else echo "No Command found to unpack tar file";fi
       ;;
     *.tar.bz2)
       echo "tar ball compressed with bzip found"
-      if [[ ! $cc_7z = "" ]]; then 7za x "$1";
+      if [[ ! $cc_7za = "" ]]; then 7za x "$1";
+        elif [[ ! $cc_7zz = "" ]]; then 7zz x "$1";
         elif [[ ! $cc_tar = "" ]]; then tar -xvjf "$1";
-        elif [[ ! "$(type -t tar)" = "" ]]; then tar -xvjf "$1";
+        elif [[ ! "$(type -t tar)" = "" ]]; then tar -xvjf "$1"; cc_tar="1";
         else echo "No Command found to unpack tar file";fi
       ;;
     *.tar.gz|*.tgz)
       echo "tar ball compressed with gunzip found"
-      if [[ ! $cc_7z = "" ]]; then 7za x "$1";
+      if [[ ! $cc_7za = "" ]]; then 7za x "$1";
+        elif [[ ! $cc_7zz = "" ]]; then 7zz x "$1";
         elif [[ ! $cc_tar = "" ]]; then tar -xvzf "$1";
-        elif [[ ! "$(type -t tar)" = "" ]]; then tar -xvzf "$1";
+        elif [[ ! "$(type -t tar)" = "" ]]; then tar -xvzf "$1"; cc_tar="1";
         else echo "No Command found to unpack tar file";fi
       ;;
     *.tar.xz)
       echo "tar ball compressed with xz found"
-      if [[ ! $cc_7z = "" ]]; then 7za x "$1";
+      if [[ ! $cc_7za = "" ]]; then 7za x "$1";
+        elif [[ ! $cc_7zz = "" ]]; then 7zz x "$1";
         elif [[ ! $cc_tar = "" ]]; then tar -xvJf "$1";
-        elif [[ ! "$(type -t tar)" = "" ]]; then tar -xvJf "$1";
+        elif [[ ! "$(type -t tar)" = "" ]]; then tar -xvJf "$1"; cc_tar="1";
         else echo "No Command found to unpack tar file";fi
       ;;
   #----------
@@ -70,99 +92,122 @@ function file_logic () {
   #----------
     *.7z)
       echo "7-Zip found"
-      if [[ ! $cc_7z = "" ]]; then 7za x "$1";
-        elif [[ ! $cc_7z = "" ]]; then 7za x "$1";
-        elif [[ ! "$(type -t 7za)" = "" ]]; then 7za x "$1";
+      if [[ ! $cc_7za = "" ]]; then 7za x "$1";
+        elif [[ ! $cc_7zz = "" ]]; then 7zz x "$1";
+        elif [[ ! "$(type -t 7za)" = "" ]]; then 7za x "$1"; cc_7za="1";
+        elif [[ ! "$(type -t 7zz)" = "" ]]; then 7zz x "$1"; cc_7zz="1";
         else echo "No Command found to unpack 7z file";fi
       ;;
     *.bz2)
       echo "bzip found"
-      if [[ ! $cc_7z = "" ]]; then 7za x "$1";
-        elif [[ ! $cc_7z = "" ]]; then 7za x "$1";
+      if [[ ! $cc_7za = "" ]]; then 7za x "$1";
+        elif [[ ! $cc_7zz = "" ]]; then 7zz x "$1";
         elif [[ ! $cc_bz = "" ]]; then bzip2 -dk "$1";
-        elif [[ ! "$(type -t bzip2)" = "" ]]; then bzip2 -dk "$1";
+        elif [[ ! "$(type -t bzip2)" = "" ]]; then bzip2 -dk "$1"; cc_bz="1";
         else echo "No Command found to unpack bzip file";fi
       ;;
     *.gz)
       echo "gunzip found"
       if [[ ! $cc_7z = "" ]]; then 7za x "$1";
-        elif [[ ! $cc_7z = "" ]]; then 7za x "$1";
+        elif [[ ! $cc_7zz = "" ]]; then 8zz x "$1";
         elif [[ ! $cc_gz = "" ]]; then gzip -d "$1";
-        elif [[ ! "$(type -t gzip)" = "" ]]; then gzip -d "$1";
+        elif [[ ! "$(type -t gzip)" = "" ]]; then gzip -d "$1"; cc_gz="1";
         else echo "No Command found to unpack gzip file";fi
       ;;
     *.rar|*.cbr)
       echo "rar found"
-      if [[ ! $cc_7z = "" ]]; then 7za x "$1";
+      if [[ ! $cc_7za = "" ]]; then 7za x "$1";
+        elif [[ ! $cc_7zz = "" ]]; then 7zz x "$1";
         elif [[ ! $cc_unar = "" ]]; then unar "$1";
         elif [[ ! $cc_unrar = "" ]]; then unrar "$1";
-        elif [[ ! "$(type -t unar)" = "" ]]; then unar "$1";
-        elif [[ ! "$(type -t unrar)" = "" ]]; then unrar "$1";
+        elif [[ ! "$(type -t unar)" = "" ]]; then unar "$1"; cc_unar="1";
+        elif [[ ! "$(type -t unrar)" = "" ]]; then unrar "$1"; cc_unrar="1";
         else echo "No Command found to unpack rar file";fi
       ;;
     *.zip|*.cbz)
       echo "zip found"
-      if [[ ! $cc_7z = "" ]]; then 7za x "$1";
+      if [[ ! $cc_7za = "" ]]; then 7za x "$1";
+        elif [[ ! $cc_7zz = "" ]]; then 7zz x "$1";
         elif [[ ! $cc_zip = "" ]]; then unzip "$1";
-        elif [[ ! "$(type -t unzip)" = "" ]]; then unzip "$1";
+        elif [[ ! "$(type -t unzip)" = "" ]]; then unzip "$1"; cc_zip="1";
         else echo "No Command found to unpack zip file";fi
       ;;
     *)
       echo "file not reconized"
       ;;
   esac
-  echo "finished uncompressing $1"
   } #fucntion file_logic ()
+#~ echo "load directory_logic"
 function directory_logic () {
-  #verifing aurgumant passed is a directoy
-  if [ ! -d $1 ]; then
-    echo "directory set is not a directory"
-    exit 1
-  fi #if [ ! -d $1 ]; then
+  #~ echo "called directory_logic"
   while read l; do
-    if [ -d "$l" ]; then
-      echo "'$l' is a dirrectory"
-      #recursively call this script again on the directory
+    if [ -d "$dir_path$l" ]; then
+      echo "'$dir_path$l' is a dir"
+      if [ -z $max_depth ];then eval $script -d "$dir_path$l";fi
     else
-      echo "'$l' is a file"
-      #pass path and filename to file_logic
+      echo "'$dir_path$l' is a file"
+      file_logic "$dir_path$l"
     fi #if [ -d $line ]; then
-  done <<< "$(ls --group-directories-first -1 $1)" #while read line; in
+  done <<< "$(ls --group-directories-first -1 $dir_path)" #while read line; in
   } #function directory_logic ()
+#~ echo "load command_logic"
+function command_logic () {
+  #~ echo "called command_logic"
+    if [[ "$individual_folders" = "1" ]];then
+      if [[ "${OPTARG}" = "unzip" ]]; then
+        o="unzip -d $"
+      fi
+    fi
+  }
+#~ echo "load command_check"
 function command_check () {
-  if [[ ! "$(type -t 7za)" = "" ]]; then cc_7z=1
-    echo "7za Found for 7zip files";fi
-  if [[ ! "$(type -t tar)" = "" ]]; then cc_tar=1
-    echo "tar Found for Tarball files";fi
-  if [[ ! "$(type -t bzip2)" = "" ]]; then cc_bzip=1
-    echo "bzip2 Found for bzip files";fi
-  if [[ ! "$(type -t gzip)" = "" ]]; then cc_gzip=1
-    echo "gzip Found for Gunzip files";fi
-  if [[ ! "$(type -t unar)" = "" ]]; then cc_unar=1
-    echo "unar Found for rar files";fi
-  if [[ ! "$(type -t unrar)" = "" ]]; then cc_unrar=1
-    echo "unrar Found for rar files";fi
-  if [[ ! "$(type -t unzip)" = "" ]]; then cc_zip=1
-    echo "unzip Found for zip files";fi
+  #~ echo "called command_check"
+  if [[ ! "$(type -t 7zz)" = "" ]]; then cc_7zz=1
+  elif [[ ! "$(type -t 7za)" = "" ]]; then cc_7za=1;fi
+  if [[ ! $cc_7zz = "1" || $cc_7za = "1" ]]; then
+    if [[ ! "$(type -t tar)" = "" ]]; then cc_tar=1;fi
+    if [[ ! "$(type -t bzip2)" = "" ]]; then cc_bzip=1;fi
+    if [[ ! "$(type -t gzip)" = "" ]]; then cc_gzip=1;fi
+    if [[ ! "$(type -t unrar)" = "" ]]; then cc_unrar=1
+    elif [[ ! "$(type -t unar)" = "" ]]; then cc_unar=1;fi
+    if [[ ! "$(type -t unzip)" = "" ]]; then cc_zip=1;fi
+  fi
   } #function command_check
-# insert declare -r variables for script location for recurcive calling
-while getopts ":hd:tc" opt; do
+#~ echo "load command_print"
+function command_print () {
+  #~ echo "command_print called"
+  if [[ ! "$(type -t 7zz)" = "" ]]; then echo "7zz Found for 7zip files";fi
+  if [[ ! "$(type -t 7za)" = "" ]]; then echo "7za Found for 7zip files";fi
+  if [[ ! "$(type -t tar)" = "" ]]; then echo "tar Found for Tarball files";fi
+  if [[ ! "$(type -t bzip2)" = "" ]]; then echo "bzip2 Found for bzip files";fi
+  if [[ ! "$(type -t gzip)" = "" ]]; then echo "gzip Found for Gunzip files";fi
+  if [[ ! "$(type -t unar)" = "" ]]; then echo "unar Found for rar files";fi
+  if [[ ! "$(type -t unrar)" = "" ]]; then echo "unrar Found for rar files";fi
+  if [[ ! "$(type -t unzip)" = "" ]]; then echo "unzip Found for zip files";fi
+  } #function command_check
+#~ echo "load aurgument checks"
+while getopts ":hd:nstcf:" opt; do
+  #~ echo "checking aurguments"
   case $opt in
     h)
       help_screen
       exit 0 ;;
     d)
-      directory_logic "${OPTARG}"
+      case "${OPTARG}" in */)dir_path="${OPTARG}";; *)dir_path="${OPTARG}/";; esac
+      directory_logic
       exit 0 ;;
+    n) max_depth=1;;
+    s) individual_folders=1;;
     t)
       file_types
       exit 0 ;;
     c)
-      command_check
+      command_print
       exit 0 ;;
     # handles any input
-    *)
-      file_logic "$1"
+    f)
+      #~ echo "single file found"
+      file_logic "${OPTARG}"
       exit 0 ;;
     # error handling
     \?)
