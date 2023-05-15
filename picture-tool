@@ -30,7 +30,6 @@ function file_logic () { #echo "called file_logic"
   elif [ ! -z $size_ratio ]; then
       output="$1 Raito $(qalc factor $(identify -format '%w/%h' $1))"
     else output="$(file $1)";fi #if [ ! -z $size_ratio ]; then
-  fi #if [ ! -z $search_size_ratio ]; then
   if [ ! -z "$output_file" ];then if [ ! "$output" = "" ];then echo "$output" >> "$output_file";fi
   elif [ ! "$output" = "" ];then echo "$output";fi
   } #function file_logic () {}
