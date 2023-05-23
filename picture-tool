@@ -55,11 +55,9 @@ while getopts ":hcnirs:f:d:o:" opt; do
     #----------
     # Help / Command Check
     #----------
-    h)
-      help_screen
+    h) help_screen
       exit 0 ;;
-    c) #echo "option:command_print"
-      command_print
+    c) command_print
       exit 0 ;;
     #----------
     # Setting values
@@ -106,7 +104,7 @@ done #while getopts ":h" opt; do
 echo "ERROR: end of script reached"
 exit 1
 #####
-# end of script
+# To-Do List / Notes
 #####
 # remove relance on qalc
 # cp raito pictures to location
