@@ -1,43 +1,57 @@
 #!/bin/bash
 function help_screen () {
   echo "Usage: script [option]"
+  echo "    -h for this screen"
   echo ""
-  echo ""
-  exit 0;} #function help_screen () {
-# making loops ignore spaces
-IFS=$(echo -en "\n\b")
-# setting variables and checking for them
+  echo "-r iso to be read"
+  echo "-w drive to be writen"
+  echo "" ; exit 0 ;} ## function help_screen () {
+#--------#
+# clearing/Setting variables
+#--------#
+IFS=$(echo -en "\n\b") ## making loops ignore spaces
 #declare -r script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 #declare -r script_name="$(basename "${BASH_SOURCE[0]}")"
-#----------
-# clearing variables
-#----------
-write_to=""
-read_from=""
-#----------
-# script aurgument reading
-#----------
+#--------#
+# Functions
+#--------#
+#--------#
+# Gandling Script calling and Options/Arguments
+#--------#
 while getopts ":hw:r:" opt; do
   case $opt in
+    #--------#
+    # Help / Command Check
+    #--------#
     h) help_screen
       exit 0 ;;
+    #--------#
+    # Setting values
+    #--------#
     w) declare -r write_to="${OPTARG}";;
     r) declare -r read_from="${OPTARG}";;
-    # error handling
+    #--------#
+    # Script Commands
+    #--------#
+    #--------#
+    # Error handling
+    #--------#
     \?) echo "Invalid option: -$OPTARG" >&2
       help_screen
       exit 1 ;;
     :) echo "Option -$OPTARG requires an argument." >&2
       help_screen
       exit 1 ;;
-  esac #case $opt in
-done #while getopts ":h" opt; do
+  esac ## case $opt in
+done ## while getopts ":h" opt; do
 if [[ ! -z "$write_to" && ! -z "$read_from" ]]; then
   sudo dd bs=4M if=$read_from of=$write_to conv=fdatasync status="progress"
   exit 0
-fi #if [[ -z "$write_to" && -z "$read_from" ]]; then
-#####
+fi ## if [[ -z "$write_to" && -z "$read_from" ]]; then
+#--------#
 # end of script
-#####
-echo "ERROR: end of script reached"
-exit 1
+#--------#
+echo "ERROR: end of script reached" ; exit 1
+#--------#
+# To-Do List
+#--------#
