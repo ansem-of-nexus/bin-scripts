@@ -3,6 +3,7 @@
 function help_screen () {
   echo "Usage: script [option]"
   echo ""
+  echo "-l lists archive's contents in less -S'"
   echo "'file' single files are passed as just a filename"
   echo "-d 'path' have script look at a directory"
   echo "  recursively scans directory and uncompress files"
@@ -173,26 +174,41 @@ function command_print () {
   if [[ ! "$(type -t unrar)" = "" ]]; then echo "unrar Found for rar files";fi
   if [[ ! "$(type -t unzip)" = "" ]]; then echo "unzip Found for zip files";fi
   } #function command_check
-while getopts ":hd:nstcf:" opt; do
+function contents () {
+  case "$1" in
+  #----------
+  # tar balls
+  #----------
+    *.tar) tmp_command "$1";;
+    *.tar.bz2) tmp_command "$1";;
+    *.tar.gz|*.tgz) tmp_command "$1";;
+    *.tar.xz) tmp_command "$1";;
+  #----------
+  # single types
+  #----------
+    *.7z) tmp_command "$1";;
+    *.bz2) tmp_command "$1";;
+    *.gz) tmp_command "$1";;
+    *.rar|*.cbr) tmp_command "$1";;
+    *.zip|*.cbz) unzip -l "$1"|less -S;;
+    *) echo "file not reconized";;
+  esac
+  exit 0;}
+while getopts ":hcl:d:nstf:" opt; do
   case $opt in
     h)
       help_screen
       exit 0 ;;
-    d)
-      case "${OPTARG}" in */)dir_path="${OPTARG}";; *)dir_path="${OPTARG}/";; esac
+    c) command_print;;
+    l) contents "${OPTARG}";;
+    d) case "${OPTARG}" in */)dir_path="${OPTARG}";; *)dir_path="${OPTARG}/";; esac
       directory_logic
       exit 0 ;;
     n) max_depth=1;;
     s) individual_folders=1;;
-    t)
-      file_types
-      exit 0 ;;
-    c)
-      command_print
-      exit 0 ;;
-    # handles any input
-    f)
-      file_logic "${OPTARG}"
+    t) file_types;;
+    # handles single file
+    f) file_logic "${OPTARG}"
       exit 0 ;;
     # error handling
     \?)
