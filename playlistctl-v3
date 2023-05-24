@@ -1,0 +1,91 @@
+#!/bin/bash
+function help_screen () {
+  echo "Usage: script [option]"
+  echo "    -h for this screen"
+  echo "    -c check if srcipt's external commands are installed"
+  echo ""
+  echo "-t set copy_type"
+  echo "    '0: cp' '1: rsync'"
+  echo "-a ask if script should copy file to desination"
+  echo "-d set desination folder"
+  echo "-p set playlist file"
+  echo ""
+  echo "-0 copy files from playlist to folder"
+  echo "-1 check playlist to folder"
+  echo "-2 check if playlist files exsist"
+  echo "-3 make folder filelist into a playlist"
+  echo "" ; exit 0 ;} ## function help_screen () {
+#--------#
+# clearing/Setting variables
+#--------#
+#--------# Scirpt Information / Input Handling #--------#
+IFS=$(echo -en "\n\b") ## making loops ignore spaces
+#declare -r script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+#declare -r script_name="$(basename "${BASH_SOURCE[0]}")"
+#declare -r script_optarg="$(basename "${BASH_SOURCE[@]}")"
+#--------#
+# Functions
+#--------#
+function command_print () { echo "command checks"
+  if [ ! "$(type -t rsyc)" = "" ]; then echo "rsyc: yes"; else echo "rsyc: no";fi
+  exit 0 ;} ## function command_check () {
+function file_copy () { if [ ! -z "$copy_type" ];then copy_type=0;fi
+  case $copy_type in
+    0) cp "$1" "$2";;
+    1) rsync -hP "$1" "$2";;
+  esac ;} ## function file_copy () {
+function playlist_to_folder () { while read l; do l="${l%[[:cntrl:]]}"
+    if [ -f "$l" ]; then echo "File Found: $l"
+      if [ -f "$desination${l##*\/}" ]; then echo "File in Directory"
+      elif [ "$ask" = "yes" ]; then read -t 5 -p "File not found: '${l##*\/}' copy? (yn)" -n 1 -r
+        if [ "$REPLY" =~ ^[Yy]$ ];then file_copy "$l" "$desination" ;fi
+      else file_copy "$l" "$desination" ;fi ## if [ -f "$desination${l##*\/}" ]; then
+    fi ## if [ -f "$l" ]; then
+  done <<< "$(cat $playlist_location)" ; exit 0;} ## function playlist_to_folder () {
+function check_playlist_to_folder () { while read l; do l="${l%[[:cntrl:]]}" ; l_name="${l##*\/}"
+      if [ -f "$desination$l_name" ]; then echo "File in Directory: ${l##*\/}"
+      else echo "File not in Directory: $l_name" ;fi ## if [ -f "$desination${l##*\/}" ]; then
+  done <<< "$(cat $playlist_location)" ; exit 0 ;} ## function check_playlist_to_folder () {
+function check_playlist () { while read l; do l="${l%[[:cntrl:]]}"
+  if [ -f "$l" ]; then echo "File Found: ${l##*\/}" ;else echo "File not Found: $l" ;fi
+  done <<< $playlist_files ; exit 0 ;} ## function check_playlist () {
+function folder_to_playlist () { while read l; do  l="${l%[[:cntrl:]]}"
+  echo "#EXTINF:${$(ffprobe -v quiet -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 $l)%%.*},${l##*\/}" >> "$playlist_location"
+  echo "${l%[[:cntrl:]]}" >> "$playlist_location"
+  done <<< "$(find $desination -maxdepth 1 -not -type d|sort)" ; exit 0 ;} ## function folder_to_playlist () {
+#--------#
+# Handling Script calling and Options/Arguments
+#--------#
+while getopts ":hct:ad:p:0123" opt; do
+  case $opt in
+    #--------# Help / Command Check #--------#
+    h) help_screen ; exit 0 ;;
+    c) command_print ; exit 0 ;;
+    #--------# Setting values #--------#
+    t) declare -r copy_type="${OPTARG}" ;;
+    a) declare -r ask="yes" ;;
+    d) case "${OPTARG}" in */) declare -r desination="${OPTARG}";; *) declare -r desination="${OPTARG}/";; esac ;;
+    p) if [ ! -f "${OPTARG}" ]; then read -p "File not found: '${OPTARG}' make file? (yn)" -n 1 -r
+      if [ "$REPLY" =~ ^[Yy]$ ];then touch "${OPTARG}"; else exit 1 ;fi;fi
+      declare -r playlist_location="${OPTARG}"
+      #declare -r playlist_list="$(cat ${OPTARG})"
+      declare -r playlist_files="$(cat ${OPTARG}|grep -Fv \#)" ;;
+    #--------# Script Commands #--------#
+    0) if [ -f "$playlist_location" && -z "$desination" ]; then playlist_to_folder ;else echo "Error: malformed script call" ; exit 1 ;fi ;;
+    1) if [ -f "$playlist_location" && -z "$desination" ]; then check_playlist_to_folder ;else echo "Error: malformed script call" ; exit 1 ;fi ;;
+    2) if [ -f "$playlist_location" ]; then check_playlist ;else echo "Error: malformed script call" ; exit 1 ;fi ;;
+    3) if [ -f "$playlist_location" && -z "$desination" ]; then folder_to_playlist ;else echo "Error: malformed script call" ; exit 1 ;fi ;;
+    #--------# Error handling #--------#
+    \?) echo "Invalid option: -$OPTARG" >&2
+      help_screen ; exit 1 ;;
+    :) echo "Option -$OPTARG requires an argument." >&2
+      help_screen ; exit 1 ;;
+  esac ## case $opt in
+done ## while getopts ":hc" opt; do
+#--------#
+# end of script
+#--------#
+echo "ERROR: end of script reached" ; exit 1
+#--------#
+# To-Do List
+#--------#
