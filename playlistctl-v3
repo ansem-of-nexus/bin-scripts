@@ -50,8 +50,10 @@ function check_playlist () { while read l; do l="${l%[[:cntrl:]]}"
   if [ -f "$l" ]; then echo "File Found: ${l##*\/}" ;else echo "File not Found: $l" ;fi
   done <<< $playlist_files ; exit 0 ;} ## function check_playlist () {
 function folder_to_playlist () { while read l; do  l="${l%[[:cntrl:]]}"
-  echo "#EXTINF:${$(ffprobe -v quiet -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 $l)%%.*},${l##*\/}" >> "$playlist_location"
-  echo "${l%[[:cntrl:]]}" >> "$playlist_location"
+  echo "Current Entry: ${l##*\/}"
+  song_time="$(ffprobe -v quiet -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 $l)"
+  echo "#EXTINF:${song_time%%.*},${l##*\/}" >> "$tmp_playlist"
+  echo "${l%[[:cntrl:]]}" >> "$tmp_playlist"
   done <<< "$(find $desination -maxdepth 1 -not -type d|sort)" ; exit 0 ;} ## function folder_to_playlist () {
 #--------#
 # Handling Script calling and Options/Arguments
@@ -66,7 +68,7 @@ while getopts ":hct:ad:p:0123" opt; do
     a) declare -r ask="yes" ;;
     d) case "${OPTARG}" in */) declare -r desination="${OPTARG}";; *) declare -r desination="${OPTARG}/";; esac ;;
     p) if [ ! -f "${OPTARG}" ]; then read -p "File not found: '${OPTARG}' make file? (yn)" -n 1 -r
-      if [ "$REPLY" =~ ^[Yy]$ ];then touch "${OPTARG}"; else exit 1 ;fi;fi
+      if [ "$REPLY" =~ ^[Yy]$ ];then touch "${OPTARG}" ; echo "#EXTM3U" > "${OPTARG}" ;else exit 1 ;fi;fi
       declare -r playlist_location="${OPTARG}"
       #declare -r playlist_list="$(cat ${OPTARG})"
       declare -r playlist_files="$(cat ${OPTARG}|grep -Fv \#)" ;;
