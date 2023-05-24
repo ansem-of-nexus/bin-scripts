@@ -1,9 +1,8 @@
 #!/bin/bash
 function help_screen () {
   echo "Usage: script [option]"
-  echo ""
-  echo "-h help_screen"
-  echo "-c command check"
+  echo "    -h help_screen"
+  echo "    -c command check"
   echo ""
   echo "-n no recursive folder scan"
   echo "-r show picture size ratio"
@@ -11,20 +10,20 @@ function help_screen () {
   echo "-f single file"
   echo "-d 'path' have script look at a directory"
   echo "  recursively scans directories in tree unless -n is set"
-  echo ""
-  exit 0;} #function help_screen () {
-# making loops ignore spaces
-IFS=$(echo -en "\n\b")
-# setting variables and checking for them
-declare -r script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
-declare -r script_name="$(basename "${BASH_SOURCE[0]}")"
-declare -r script_optarg="$@"
-#----------
-# clearing variables
-#----------
-#function command_logic () {;} #function command_logic () {}
-function file_logic () { #echo "called file_logic"
-  declare output=""
+  echo "" ; exit 0 ;} ## function help_screen () {
+#--------#
+# clearing/Setting variables
+#--------#
+#--------# Scirpt Information / Input Handling #--------#
+IFS=$(echo -en "\n\b") ## making loops ignore spaces
+#declare -r script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+#declare -r script_name="$(basename "${BASH_SOURCE[0]}")"
+#declare -r script_optarg="$(basename "${BASH_SOURCE[@]}")"
+#--------#
+# Functions
+#--------#
+#function command_logic () {;} #function command_logic () {
+function file_logic () {
   if [ ! -z $search_size_ratio ]; then
     if [ ! "$(qalc factor $(identify -format '%w/%h' $1)|grep -o $search_size_ratio)" = "" ]; then output="$1";fi
   elif [ ! -z $size_ratio ]; then
@@ -32,52 +31,40 @@ function file_logic () { #echo "called file_logic"
     else output="$(file $1)";fi #if [ ! -z $size_ratio ]; then
   if [ ! -z "$output_file" ];then if [ ! "$output" = "" ];then echo "$output" >> "$output_file";fi
   elif [ ! "$output" = "" ];then echo "$output";fi
-  } #function file_logic () {}
-function dir_logic () {
-  while read l; do
+  } ## function file_logic () {
+function dir_logic () { while read l; do
     if [ -d "$dir_path$l" ]; then
       if [ "$(ls -A $dir_path$l)" ];then
         echo "Looking in: '$dir_path$l'"
         eval "$script ${script_optarg%-d\ *} -d '$dir_path$l'"
       else echo "$dir_path$l is empty";fi
-    else file_logic "$dir_path$l";fi #if [ -d $line ]; then
-  done <<< "$(ls --group-directories-first -1 $dir_path)" #while read line; in
-  } #function directory_logic ()
-function command_print () { #echo "command_print called"
-  echo "command checks"
+    else file_logic "$dir_path$l";fi ## if [ -d $line ]; then
+  done <<< "$(ls --group-directories-first -1 $dir_path)" ## while read line; in
+  } ## function directory_logic () {
+function command_print () { echo "command checks"
   if [ ! "$(type -t file)" = "" ]; then echo "file: yes"; else echo "file: no";fi
   if [ ! "$(type -t grep)" = "" ]; then echo "grep: yes"; else echo "grep: no";fi
   if [ ! "$(type -t identify)" = "" ]; then echo "identify: yes"; else echo "identify: no";fi
   if [ ! "$(type -t qalc)" = "" ]; then echo "qalc: yes"; else echo "qalc: no";fi
-  exit 0;} #function command_check
-while getopts ":hcnirs:f:d:o:" opt; do
-  case $opt in
-    #----------
-    # Help / Command Check
-    #----------
+  exit 0;} ## function command_print () {
+while getopts ":hcnrs:f:d:o:" opt; do case $opt in
+    #--------# Help / Command Check #--------#
     h) help_screen
       exit 0 ;;
     c) command_print
       exit 0 ;;
-    #----------
-    # Setting values
-    #----------
+    #--------# Setting values #--------#
     n) declare -r max_depth=1;;
     r) declare -r size_ratio=1;;
     s) declare -r search_size_ratio="${OPTARG}"
       if [ -z $size_ratio ];then declare -r size_ratio=1;fi;;
-    #----------
-    # Script Commands
-    #----------
-    f) #echo "option:file_logic argument:${OPTARG}"
-      file_logic "${OPTARG}"
+    #--------# Script Commands #--------#
+    f) file_logic "${OPTARG}"
       exit 0 ;;
-    d) #echo "option:dir_logic argument:${OPTARG}"
-      case "${OPTARG}" in */)dir_path="${OPTARG}";; *)dir_path="${OPTARG}/";; esac
+    d) case "${OPTARG}" in */)dir_path="${OPTARG}";; *)dir_path="${OPTARG}/";; esac
       dir_logic $dir_path
       exit 0 ;;
-    o) #echo "option:output_file argument:${OPTARG}"
-      if [ -f "${OPTARG}" ]; then declare -r output_file="${OPTARG}"
+    o) if [ -f "${OPTARG}" ]; then declare -r output_file="${OPTARG}"
       else echo "'${OPTARG}' Does not exist, create file?"
         select yn in "Yes" "No";do
           case $yn in
@@ -85,19 +72,13 @@ while getopts ":hcnirs:f:d:o:" opt; do
             No) exit 1;;
           esac;done
       fi;; #if [ -f "${OPTARG}" ]
-    #----------
-    # error handling
-    #----------
-    \?)
-      echo "Invalid option: -$OPTARG" >&2
-      help_screen
-      exit 1 ;;
-    :)
-      echo "Option -$OPTARG requires an argument." >&2
-      help_screen
-      exit 1 ;;
+    #--------# Error Handling #--------#
+    \?) echo "Invalid option: -$OPTARG" >&2
+      help_screen ; exit 1 ;;
+    :) echo "Option -$OPTARG requires an argument." >&2
+      help_screen ; exit 1 ;;
   esac #case $opt in
-done #while getopts ":h" opt; do
+done #while getopts ":hc" opt; do
 #####
 # end of script
 #####
