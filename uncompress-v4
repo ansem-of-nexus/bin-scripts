@@ -107,8 +107,6 @@ function directory_logic () {
     fi #if [ -d $line ]; then
   done <<< "$(ls --group-directories-first -1 $dir_path)" #while read line; in
   } ## function directory_logic () {
-function command_logic () {
-  } ## function command_logic () {
 function command_check () {
   if [[ ! "$(type -t 7zz)" = "" ]]; then declare -r cc_7zz=1
     if [ "$1" = "print" ]; then echo "7zz Found for 7zip files" ;fi
