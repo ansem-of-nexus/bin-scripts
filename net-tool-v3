@@ -1,0 +1,151 @@
+#!/bin/bash
+function help_screen () {
+  echo "command [type] url [options]"
+  echo "    -h for this screen"
+  echo "types are:"
+  echo "    -c check connection to internet"
+  echo "    -w watch interface"
+  echo "    -r reset interface"
+  echo "    -a show ip adress"
+  echo "    -s sync date/time"
+  echo "" ; exit 0 ;} ## function help_screen () {}
+#--------#
+# clearing/Setting variables
+#--------#
+step=1
+delay=1
+#--------# Scirpt Information / Input Handling #--------#
+IFS=$(echo -en "\n\b") ## making loops ignore spaces
+#declare -r script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+#declare -r script_name="$(basename "${BASH_SOURCE[0]}")"
+#declare -r script_optarg="$(basename "${BASH_SOURCE[@]}")"
+#--------#
+# Functions
+#--------#
+function command_print () { echo "command checks"
+  if [ ! "$(type -t file)" = "" ]; then echo "file: yes"; else echo "file: no";fi
+  if [ ! "$(type -t grep)" = "" ]; then echo "grep: yes"; else echo "grep: no";fi
+  if [ ! "$(type -t identify)" = "" ]; then echo "identify: yes"; else echo "identify: no";fi
+  if [ ! "$(type -t qalc)" = "" ]; then echo "qalc: yes"; else echo "qalc: no";fi
+  exit 0 ;} ## function command_check () {
+ping_check1 () { ping_result1=echo -e "GET http://google.com HTTP/1.0\n\n" | nc google.com 80 > /dev/null 2>&1"" ;}
+ping_check2 () { ping_result2=curl --silent --head http://www.google.com/ |egrep '20[0-9] Found|30[0-9] Found' > /dev/null ;}
+line_start () { ctime="$(date +%k:%M:%S)" ;}
+function check {
+  line_start ; o=$ctime # starts output with time of execution
+  ping_check1
+  case "$ping_result1" in
+    0) o+=" - C1:Internet" ; c_c1=0;;
+    1) o+=" - C1:No Internet" ; c_c1=1;;
+    2) o+=" - C1:No Connection" ; c_c1=2;;
+    *) echo "function check - check #1: ERROR, unexpected resualt"
+  esac ## case "$ping_result1" in
+  ping_check2
+  case "$ping_result2" in
+    0) o+=" - C2:No Internet" ; c_c2=0;;
+    1) o+=" - C2:Internet" ; c_c2=1;;
+    2) o+=" - C2:No Connection" ; c_c2=2;;
+    *) echo "function check - check #2: ERROR, unexpected resualt"
+  esac ## case "$ping_result2" in
+  echo $o;} ## function check {}
+function monitor {
+  ss_1=1 ; ss_2=0 ; ss_3=1 ## setting save states for first loop
+  while true; do # log network conection and internet connection
+    line_start ; o=$ctime # starts output with time of execution
+    if [ ! -z "$(ls /sys/class/net/ | grep -v lo)" ]; then ## check #1, if any interfaces exist
+      o+=" - Interface present"
+      case "$(cat /sys/class/net/$interface/carrier)" in ## check #2, is provided interface connected
+          0) o+=" - C2:disconnected" ; w_c2=0;;
+          1) o+=" - C2:Connected" ; w_c2=1;;
+          *) echo "function watch - check #2: ERROR, unexpected resualt"
+      esac ## case $var in
+      if [ $w_c2 != $ss_1 ]; then step=0; delay=1; ss_1="$w_c2" ;fi ## saving w_c2 for next loop and reset interval length
+      if [ $w_c2 != "0" ]; then
+        ping_check1 ; case $ping_result1 in ## check #3, pings internet
+          0) o+=" - C3:Internet";;
+          1) o+=" - C3:No Internet";;
+          2) o+=" - C3:No Connection";;
+          *) echo "function watch - check #3: ERROR, unexpected resualt"
+        esac ## case $ping_check1 in
+        if [ $w_c3 != $ss_2 ]; then step=0; delay=1; ss_2="$w_c3" ;fi ## saving w_c3 for next loop and reset interval length
+        if [ $w_c3 = "0" ]; then
+          ping_check2 ; case "$ping_result2" in ## check #4, pings internet
+            0) o+=" - C4:No Internet";;
+            1) o+=" - C4:Internet";;
+            2) o+=" - C4:No Connection";;
+            *) echo "function watch - check #4: ERROR, unexpected resualt"
+          esac ## case $ping_result2 in
+          if [ $w_c4 != $ss_3 ]; then step=0; delay=1; ss_3="$w_c4" ;fi ## saving w_c4 for next loop and reset interval length
+        fi #if [ $w_c3 = "0" ]; then
+      fi #if [ $w_c2 != "0" ]; then
+      echo $o # printing results
+      interval
+    else #if [ ! -z "$(ls /sys/class/net/ | grep -v lo)" ]; then
+      o+=" - No Interfaces" ; read -p "Hit ENTER when interfaces are present" ; echo
+    fi #if [ ! -z "$(ls /sys/class/net/ | grep -v lo)" ]; then
+  done ;} #function watch () {
+function reset {
+  nmcli con down "$con_name"
+  sleep 10s
+  result="starting"
+  while [ ! $result = "0" ]; do
+    step=0 ; delay=5 ; interval
+    echo "atempting reconection"
+    nmcli con up "$con_name"
+    result=$?
+  done ## while [ ! $result = "0" ]; do
+  exit 0 ;} #function reset () {
+function interval {
+  ((step ++)) #iterating count
+  case $delay in ##seconds of sleep per step
+    1) if [ "$step" = 10 ];then delay=5 & step=1 ;fi;;
+    5) if [ "$step" = 60 ];then delay=10 & step=1 ;fi;;
+    10) if [ "$step" = 60 ];then step=1 ;fi;;
+  esac
+  read -t $delay -p "Hit ENTER or wait $delay seconds"; echo; echo ;} #function interval () {
+function dev_select () { ## deevice selection
+  nmcli dev
+  echo ; read -p "Name of Device: " -n 3 -r ; echo #; echo "$REPLY"
+  dev_name=$(nmcli dev|grep -io "^$REPLY\w*")
+  #echo "$dev_name" ; exit 0
+  } ## function dev_select () {
+function con_select () { ## deevice selection
+  nmcli con
+  echo ; read -p "Name of conice: " -n 3 -r ; echo #; echo "$REPLY"
+  con_name=$(nmcli con|grep -io "^$REPLY\w*")
+  #echo "$con_name" ; exit 0
+  } ## function con_select () {
+#--------#
+# Handling Script calling and Options/Arguments
+#     & verifying nmcli is useable
+#--------#
+  if [ ! "$(type)" = "" ]; then echo "ERROR: Script unable to access nmcli" ; exit 1 ;fi
+while getopts ":hcd:w:tmras" opt; do case $opt in
+    #--------# Help / Command Check #--------#
+    h) help_screen ; exit 0 ;;
+    c) command_check "print" ; exit 0 ;;
+    #--------# Setting values #--------#
+    d) if [ ! "${OPTARG}" = "list" ]; then declare -r dev_name="${OPTARG}"
+    else dev_select ;fi ;;
+    w) if [ ! "${OPTARG}" = "list" ]; then declare -r con_name="${OPTARG}"
+    else con_select ;fi ;;
+    #--------# Script Commands #--------#
+    t) check ; exit 0 ;;
+    m) if [ ! -z "$con_name" ]; then echo "ERROR: Connection not set." ; exit 1 ;fi #change to m for monitor con/dev
+      monitor ; exit 0 ;;
+    r) reset ; exit 0 ;;
+    a) echo $(curl icanhazip.com) ; exit 0 ;;
+    s) ntpdate -q 0.fedora.pool.ntp.org ; exit 0 ;;
+    #--------# Error Handling #--------#
+    \?) echo "Invalid option: -$OPTARG" >&2
+      help_screen ; exit 1 ;;
+    :) echo "Option -$OPTARG requires an argument." >&2
+      help_screen ; exit 1 ;;
+  esac ; done #while getopts ":hc" opt; do
+#--------#
+# end of script
+#--------#
+echo "ERROR: end of script reached" ; exit 1
+#--------#
+# To-Do List
+#--------#
