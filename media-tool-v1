@@ -1,0 +1,156 @@
+#!/bin/bash
+function help_screen () {
+  echo "Usage: script [option]"
+  echo "    -h for this screen"
+  echo "    -c check if srcipt's external commands are installed"
+  echo ""
+  echo "-0 set copy_type"
+  echo "    '0: cp' '1: rsync'"
+  echo "-a ask if script should copy file to desination"
+  echo "-l set url"
+  echo "-p set path"
+  echo "-u set user"
+  echo "-t set throttle"
+  echo "-f format select"
+  echo ""
+  echo "-y pass everything to youtube-dl"
+  echo "-1 copy files from playlist to folder"
+  echo "-2 check playlist to folder"
+  echo "-3 check if playlist files exsist"
+  echo "-4 make folder filelist into a playlist"
+  echo "-5 flac convert"
+  echo "" ; exit 0 ;} ## function help_screen () {
+#--------#
+# clearing/Setting variables
+#--------#
+#--------# Scirpt Information / Input Handling #--------#
+IFS=$(echo -en "\n\b") ## making loops ignore spaces
+#declare -r script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+#declare -r script_name="$(basename "${BASH_SOURCE[0]}")"
+#declare -r script_optarg="$(basename "${BASH_SOURCE[@]}")"
+#--------#
+# Functions
+#--------#
+function command_print () { echo "command checks"
+  if [ ! "$(type -t rsyc)" = "" ]; then echo "rsyc: yes"; else echo "rsyc: no";fi
+  if [ ! "$(type -t youtube-dl)" = "" ]; then echo "youtube-dl: yes"; else echo "youtube-dl: no";fi
+  if [ ! "$(type -t ffmpeg)" = "" ]; then echo "ffmpeg: yes"; else echo "ffmpeg: no";fi
+  exit 0 ;} ## function command_check () {
+function file_copy () { if [ ! -z "$copy_type" ];then copy_type=0 ;fi
+  case $copy_type in
+    0) cp "$1" "$2";;
+    1) rsync -hP "$1" "$2";;
+  esac ;} ## function file_copy () {
+function playlist_to_folder () { while read l; do l="${l%[[:cntrl:]]}"
+    if [ -f "$l" ]; then echo "File Found: $l"
+      if [ -f "$destination${l##*\/}" ]; then echo "File in Directory"
+      elif [ "$ask" = "yes" ]; then read -t 5 -p "File not found: '${l##*\/}' copy? (yn)" -n 1 -r
+        if [ "$REPLY" =~ ^[Yy]$ ];then file_copy "$l" "$destination" ;fi
+      else file_copy "$l" "$destination" ;fi ## if [ -f "$desination${l##*\/}" ]; then
+    fi ## if [ -f "$l" ]; then
+  done <<< "$(cat $path)" ; exit 0;} ## function playlist_to_folder () {
+function check_playlist_to_folder () { while read l; do l="${l%[[:cntrl:]]}" ; l_name="${l##*\/}"
+      if [ -f "$destination$l_name" ]; then echo "File in Directory: ${l##*\/}"
+      else echo "File not in Directory: $l_name" ;fi ## if [ -f "$desination${l##*\/}" ]; then
+  done <<< "$(cat $path)" ; exit 0 ;} ## function check_playlist_to_folder () {
+function check_playlist () { while read l; do l="${l%[[:cntrl:]]}"
+  if [ -f "$l" ]; then echo "File Found: ${l##*\/}" ;else echo "File not Found: $l" ;fi
+  done <<< $path ; exit 0 ;} ## function check_playlist () {
+function folder_to_playlist () { while read l; do  l="${l%[[:cntrl:]]}"
+  echo "Current Entry: ${l##*\/}"
+  song_time="$(ffprobe -v quiet -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 $l)"
+  echo "#EXTINF:${song_time%%.*},${l##*\/}" >> "$tmp_playlist"
+  echo "${l%[[:cntrl:]]}" >> "$tmp_playlist"
+  done <<< "$(find $destination -maxdepth 1 -not -type d|sort)" ; exit 0 ;} ## function folder_to_playlist () {
+function format_select () { if [ -z $link ]; then echo "ERROR: -l not set" ; exit 1 ;fi
+  echo "foramt selection"
+  echo "  v: default video"
+  echo "  a: default audio"
+  echo "  b: best video & audio"
+  echo "  y: pull avalible formats"
+  read -p "[Option #]: " -n 1 -r ; echo
+  case "$REPLY" in
+    v) declare -r format="'best[ext=mp4][height<=1080]'" ;; ## default video format
+    a) declare -r format="bestaudio[ext!=webm]" ;; ## default audio format
+    b) declare -r format="'bestvideo[ext=webm]+bestaudio[ext=m4a]/bestvideo+bestaudio' --merge-output-format mkv" ;; ## the best video & audio
+    y) eval "youtube-dl -F $link | less -S" ; if [ $? = 0 ]; then echo ; read -p "(Select option to download): " -n 3 -r ; echo ;else exit 1 ;fi ;;
+  esac ; if [ -z "$format" ]; then case $REPLY in
+    [0-9][0-9][0-9]) declare -r format="$REPLY" ;; ## selected format
+    *) echo "ERROR: recived reply '$REPLY'" ; exit 1 ;; ## error handling
+  esac ;fi ;} ## function format_select () {
+function flac_convert () {
+  if [ -d "$1" ]; then case "$1" in *\/) input_dir="$1";; *) input_dir="${1}/";; esac
+    while read l; do if [ ! -d "${input_dir}${l}" ]; then
+      input="${input_dir}${l}" ; output="${input%\.*}.flac"
+      title="${input##*\/}" ; title="${input#*- }" ; title="${title%\.*}"
+      artist="${input##*\/}" ; artist="${artist%% -*}"
+      eval "ffmpeg -i '$input' -c:a flac -metadata title='$title' -metadata artist='$artist' -metadata comment='YT-RIP' '$output'"
+    fi ;done <<< "$(ls -1 $1)" ## while read l; do if [ ! -d "${input_dir}${l}" ]; then
+  else
+    input="${1}" ; output="${input%\.*}.flac"
+    title="${input##*\/}" ; title="${input#*- }" ; title="${title%\.*}"
+    artist="${input##*\/}" ; artist="${artist%% -*}"
+    eval "ffmpeg -i '$input' -c:a flac -metadata title='$title' -metadata artist='$artist' -metadata comment='YT-RIP' '$output'"
+  fi
+  } ## function flac_convert () {
+function ytdl () {
+  if [ "$(type -t youtube-dl)" = "" ]; then echo "youtube-dl not found" ; exit 1 ;fi
+  if [ -z $link ]; then echo "ERROR: -l not set" ; exit 1 ;fi
+  if [ -z $path ]; then declare -r path="./"
+  elif [ ! -d $path ]; then echo "ERROR: -p is not a directory" ; exit 1 ;fi
+  if [ -z $format ]; then declare -r format="'best[ext=mp4][height<=1080]'" ;fi
+  if [ -z $throttle ]; then eval "youtube-dl -f ${format} -o \"${path}[%(upload_date)s] %(title)s [%(uploader)s].%(ext)s\" ${link}"
+  else eval "youtube-dl -r ${throttle} -f ${format} -o \"${path}[%(upload_date)s] %(title)s [%(uploader)s].%(ext)s\" ${link}" ;fi
+  echo ; echo "Finished downloading [$?]" ; exit 0
+  } ## function ytdl () {
+#--------#
+# Handling Script calling and Options/Arguments
+#--------#
+while getopts ":hc0:al:u:p:t:fy12345" opt; do
+  case $opt in
+    #--------# Help / Command Check #--------#
+    h) help_screen ; exit 0 ;;
+    c) command_print ; exit 0 ;;
+    #--------# Setting values #--------#
+    0) declare -r copy_type="${OPTARG}" ;;
+    a) declare -r ask="yes" ;;
+    l) declare -r link="${OPTARG}" ;;
+    d) if [ ! -d "${OPTARG}" ]; then case "${OPTARG}" in *\/) declare -r destination="${OPTARG}" ;; *) declare -r destination="${OPTARG}/" ;; esac ;fi ;;
+    u) declare -r user="${OPTARG}" ;;
+    p) if [ ! -e "${OPTARG}" ]; then read -p "File or Directory not found: '${OPTARG}' make playlist? (yn)" -n 1 -r
+        if [ "$REPLY" =~ ^[Yy]$ ];then touch "${OPTARG}" ; echo "#EXTM3U" > "${OPTARG}" ;else exit 1 ;fi
+      else ## if [ ! -e "${OPTARG}" ]; then
+        if [ ! -d "${OPTARG}" ]; then case "${OPTARG}" in *\/) declare -r path="${OPTARG}" ;; *) declare -r path="${OPTARG}/" ;; esac
+        elif [ -f "${OPTARG}" ]; then
+            declare -r playlist_location="${OPTARG}"
+            #declare -r playlist_list="$(cat ${OPTARG})"
+            declare -r playlist_files="$(cat ${OPTARG}|grep -Fv \#)"
+          else echo "ERROR: unable to use '${OPTARG}' " ;fi ;fi ;; ## if [ ! -e "${OPTARG}" ]; then
+    t) case "${OPTARG}" in d) declare -r throttle="512K" ;;
+        ^*[0-9][A-Z]$) declare -r throttle="${OPTARG}" ;;
+        ^*[0-9]$) declare -r throttle="${OPTARG}K" ;;
+      esac ;; ## case "${OPTARG}" in
+    #--------# Script Commands #--------#
+    f) format_select ;;
+    y) ytdl ;;
+    1) if [ -f "$playlist_location" && -z "$destination" ]; then playlist_to_folder ;else echo "Error: malformed script call" ; exit 1 ;fi ;;
+    2) if [ -f "$playlist_location" && -z "$destination" ]; then check_playlist_to_folder ;else echo "Error: malformed script call" ; exit 1 ;fi ;;
+    3) if [ -f "$playlist_location" ]; then check_playlist ;else echo "Error: malformed script call" ; exit 1 ;fi ;;
+    4) if [ -f "$playlist_location" && -z "$destination" ]; then folder_to_playlist ;else echo "Error: malformed script call" ; exit 1 ;fi ;;
+    5) if [ -e "${OPTARG}" ]; then flac_convert "${OPTARG}" ; exit 0
+      else echo "ERROR: could not find '${OPTARG}'" ; exit 1 ;fi;;
+    #--------# Error handling #--------#
+    \?) echo "Invalid option: -$OPTARG" >&2
+      help_screen ; exit 1 ;;
+    :) echo "Option -$OPTARG requires an argument." >&2
+      help_screen ; exit 1 ;;
+  esac ## case $opt in
+done ## while getopts ":hc" opt; do
+#--------#
+# end of script
+#--------#
+echo "ERROR: end of script reached" ; exit 1
+#--------#
+# To-Do List
+#--------#
+# can a function sort a playlist by filename and not folder
