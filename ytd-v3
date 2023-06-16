@@ -1,0 +1,100 @@
+#!/bin/bash
+function help_screen () {
+  echo "Usage: script [option]"
+  echo "    -h for this screen"
+  echo ""
+  echo "-l set url"
+  echo "-p set path to directory"
+  echo "-u set user"
+  echo "-t set throttle"
+  echo "-f format select"
+  echo "-d set format 'best[ext=mp4][height<=1080]'"
+  echo "-a format 'bestaudio[ext!=webm]'"
+  echo "-1 flac convert"
+  echo "" ; exit 0 ;} ## function help_screen () {
+#--------#
+# clearing/Setting variables
+#--------#
+#--------# Scirpt Information / Input Handling #--------#
+IFS=$(echo -en "\n\b") ## making loops ignore spaces
+#declare -r script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+#declare -r script_name="$(basename "${BASH_SOURCE[0]}")"
+#declare -r script_optarg="$(basename "${BASH_SOURCE[@]}")"
+#--------#
+# Functions
+#--------#
+function command_print () { echo "command checks"
+  if [ ! "$(type -t youtube-dl)" = "" ]; then echo "youtube-dl: yes"; else echo "youtube-dl: no";fi
+  if [ ! "$(type -t ffmpeg)" = "" ]; then echo "ffmpeg: yes"; else echo "ffmpeg: no";fi
+  exit 0 ;} ## function command_check () {
+function format_select () {
+  if [ -z $link ]; then echo "ERROR: -l not set" ; exit 1 ;fi
+  youtube-dl -F $link
+  if [ $? = 0 ]; then echo ; read -p "(Select option to download): " -n 3 -r ; echo #; echo "$REPLY"
+  else exit 1 ;fi
+  case $REPLY in
+    d) declare -r format="'best[ext=mp4][height<=1080]'" ;; ## default video format
+    a) declare -r format="bestaudio[ext!=webm]" ;; ## default audio format
+    [0-9][0-9][0-9]) declare -r format="$REPLY" ;; ## selected format
+    *) echo "ERROR: recived reply '$REEPLY'" ; exit 1 ;; ## error handling
+  esac ;} ## function format_select () {
+function flac_convert () {
+  if [ -d "$1" ]; then case "$1" in *\/) input_dir="$1";; *) input_dir="${1}/";; esac
+    while read l; do if [ ! -d "${input_dir}${l}" ]; then
+      input="${input_dir}${l}" ; output="${input%\.*}.flac"
+      title="${input##*\/}" ; title="${input#*- }" ; title="${title%\.*}"
+      artist="${input##*\/}" ; artist="${artist%% -*}"
+      eval "ffmpeg -i '$input' -c:a flac -metadata title='$title' -metadata artist='$artist' -metadata comment='YT-RIP' '$output'"
+    fi ;done <<< "$(ls -1 $1)" ## while read l; do if [ ! -d "${input_dir}${l}" ]; then
+  else
+    input="${1}" ; output="${input%\.*}.flac"
+    title="${input##*\/}" ; title="${input#*- }" ; title="${title%\.*}"
+    artist="${input##*\/}" ; artist="${artist%% -*}"
+    eval "ffmpeg -i '$input' -c:a flac -metadata title='$title' -metadata artist='$artist' -metadata comment='YT-RIP' '$output'"
+  fi
+  } ## function flac_convert () {
+#--------#
+# Handling Script calling and Options/Arguments
+#--------#
+while getopts ":hcl:p:u:t:fda1:" opt; do
+  case $opt in
+    #--------# Help / Command Check #--------#
+    h) help_screen ; exit 0 ;;
+    c) command_print ; exit 0 ;;
+    #--------# Setting values #--------#
+    l) declare -r link="${OPTARG}" ;;
+    p) declare -r path="${OPTARG}" ;;
+    u) declare -r user="${OPTARG}" ;;
+    t) case "${OPTARG}" in
+        d) declare -r throttle="512K" ;;
+        ^*[0-9][A-Z]$) declare -r throttle="${OPTARG}" ;;
+        ^*[0-9]$) declare -r throttle="${OPTARG}K" ;;
+      esac ;;
+    #--------# Script Commands #--------#
+    f) format_select ;;
+    d) declare -r format="'best[ext=mp4][height<=1080]'" ;; ## default video format
+    a) declare -r format="bestaudio[ext!=webm]" ;; ## default audio format
+    1) if [ -e "${OPTARG}" ]; then flac_convert "${OPTARG}" ; exit 0
+      else echo "ERROR: could not find '${OPTARG}'" ; exit 1 ;fi;;
+    #--------# Error handling #--------#
+    \?) echo "Invalid option: -$OPTARG" >&2
+      help_screen ; exit 1 ;;
+    :) echo "Option -$OPTARG requires an argument." >&2
+      help_screen ; exit 1 ;;
+  esac ## case $opt in
+done ## while getopts ":hc" opt; do
+if [ -z $link ]; then echo "ERROR: -l not set" ; exit 1 ;fi
+if [ -z $path ]; then declare -r path="./"
+elif [ ! -d $path ]; then echo "ERROR: -p is not a directory" ; exit 1 ;fi
+if [ -z $format ]; then declare -r format="'best[ext=mp4][height<=1080]'" ;fi
+if [ -z $throttle ]; then eval "youtube-dl -f ${format} -o \"${path}[%(upload_date)s] %(title)s [%(uploader)s].%(ext)s\" ${link}"
+else eval "youtube-dl -r ${throttle} -f ${format} -o \"${path}[%(upload_date)s] %(title)s [%(uploader)s].%(ext)s\" ${link}" ;fi
+echo ; echo "Finished downloading [$?]" ; exit 0
+#--------#
+# end of script
+#--------#
+echo "ERROR: end of script reached" ; exit 1
+#--------#
+# To-Do List
+#--------#
+# git update comment, added quick format options, added to help
